@@ -1,0 +1,9 @@
+.contact-choice { display: flex; gap: 8px; align-items: center; border: 0; margin: 0 0 18px; padding: 0; }
+.contact-choice legend { width: 100%; padding: 0 0 8px; font: 10px var(--mono); letter-spacing: .08em; color: var(--muted); }
+.contact-type { display: inline-flex !important; align-items: center; margin: 0 !important; cursor: pointer; position: relative; }
+.contact-type input { position: absolute; opacity: 0; width: 100% !important; height: 100%; min-height: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; cursor: pointer; }
+.contact-type span { border: 1px solid var(--ink); border-radius: 2px; padding: 10px 14px; font: 11px var(--mono); letter-spacing: .06em; color: var(--ink); }
+.contact-type input:checked + span { background: var(--ink); color: #fff; }
+.contact-type input:focus-visible + span { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.admin-entry span:first-child b, .admin-entry span:first-child small { display: block; }
+.admin-entry span:first-child small { margin-top: 3px; color: var(--muted); font: 10px var(--mono); word-break: break-all; }

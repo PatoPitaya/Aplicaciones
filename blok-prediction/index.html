@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#244343" />
+  <meta name="description" content="Predice quién gana la final de escalada." />
+  <title>La Apuesta — BLOK</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="contact.css" />
+</head>
+<body>
+  <div class="paper-grain" aria-hidden="true"></div>
+  <div class="app-shell">
+    <main class="app-frame" id="appFrame">
+      <section class="app-view is-active welcome-view" data-view="welcome" aria-labelledby="welcomeTitle">
+        <header class="app-header">
+          <a class="logo" href="#inicio" aria-label="BLOK inicio">BLOK</a>
+          <button class="header-link" id="adminToggle" aria-expanded="false" aria-controls="adminPanel">ORG. <span>↗</span></button>
+        </header>
+        <div class="welcome-content">
+          <p class="micro-label">BLOK / CLIMB PREDICTIONS</p>
+          <h1 id="welcomeTitle">¿QUIÉN SE<br />LLEVA LA<br /><span>FINAL?</span></h1>
+          <p class="welcome-copy">Apuesta por quien gana la final y entra en el sorteo del premio.</p>
+          <div class="climb-poster" aria-hidden="true">
+            <span class="poster-tape tape-one"></span>
+            <span class="poster-tape tape-two"></span>
+            <span class="poster-route route-one"></span>
+            <span class="poster-route route-two"></span>
+            <span class="poster-hold hold-one"></span>
+            <span class="poster-hold hold-two"></span>
+            <span class="poster-hold hold-three"></span>
+            <span class="climber-shape"></span>
+            <span class="poster-caption">FINAL<br />NIGHT<br />01</span>
+          </div>
+        </div>
+        <div class="bottom-actions">
+          <button class="primary-action" data-view-target="prediction"><span>HACER MI PREDICCIÓN</span><b>→</b></button>
+          <button class="text-action" data-view-target="results">VER RESULTADOS <span>↗</span></button>
+        </div>
+      </section>
+
+      <section class="app-view prediction-view" data-view="prediction" aria-labelledby="predictionTitle">
+        <header class="app-header">
+          <button class="back-button" data-view-target="welcome" aria-label="Volver">← <span>VOLVER</span></button>
+          <a class="logo logo-small" href="#inicio">BLOK</a>
+        </header>
+        <div class="view-content">
+          <p class="micro-label">01 / TU APUESTA</p>
+          <h2 id="predictionTitle">MI <span>APUESTA</span></h2>
+          <p class="view-lead">¿Quién gana la final?</p>
+          <p class="view-helper">Escribe tu nombre y elige un escalador.</p>
+          <form id="predictionForm" class="prediction-form">
+            <label for="participantName">TU NOMBRE</label>
+            <input id="participantName" name="name" autocomplete="name" placeholder="¿Cómo te llamas?" maxlength="60" required />
+            <fieldset class="contact-choice">
+              <legend>¿CÓMO TE CONTACTAMOS?</legend>
+              <label class="contact-type"><input type="radio" name="contactType" value="email" checked /> <span>CORREO</span></label>
+              <label class="contact-type"><input type="radio" name="contactType" value="phone" /> <span>TELÉFONO</span></label>
+            </fieldset>
+            <label id="contactLabel" for="contactValue">TU CORREO</label>
+            <input id="contactValue" name="contactValue" type="email" autocomplete="email" inputmode="email" placeholder="nombre@correo.com" maxlength="120" required />
+            <label for="climberName">TU ESCALADOR/A</label>
+            <input id="climberName" name="climber" list="climberOptions" placeholder="Busca o escribe un nombre" maxlength="80" required />
+            <datalist id="climberOptions">
+              <option value="Alex Megos"></option>
+              <option value="Janja Garnbret"></option>
+              <option value="Adam Ondra"></option>
+              <option value="Laura Rogora"></option>
+              <option value="Tomoa Narasaki"></option>
+            </datalist>
+            <div class="climber-list" aria-label="Escaladores destacados">
+              <button type="button" class="climber-option" data-climber-choice="Alex Megos"><span class="avatar avatar-a">AM</span><span><b>Alex Megos</b><small>Alemania</small></span><i></i></button>
+              <button type="button" class="climber-option" data-climber-choice="Janja Garnbret"><span class="avatar avatar-b">JG</span><span><b>Janja Garnbret</b><small>Eslovenia</small></span><i></i></button>
+              <button type="button" class="climber-option" data-climber-choice="Adam Ondra"><span class="avatar avatar-c">AO</span><span><b>Adam Ondra</b><small>Rep. Checa</small></span><i></i></button>
+              <button type="button" class="climber-option" data-climber-choice="Laura Rogora"><span class="avatar avatar-d">LR</span><span><b>Laura Rogora</b><small>Italia</small></span><i></i></button>
+              <button type="button" class="climber-option" data-climber-choice="Tomoa Narasaki"><span class="avatar avatar-e">TN</span><span><b>Tomoa Narasaki</b><small>Japón</small></span><i></i></button>
+            </div>
+            <button class="primary-action submit-button" type="submit"><span>CONFIRMAR PREDICCIÓN</span><b>→</b></button>
+            <p class="form-privacy" id="storageNote">Una predicción por persona. ¡Suerte!</p>
+            <div id="formMessage" class="form-message" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+      </section>
+
+      <section class="app-view success-view" data-view="success" aria-labelledby="successTitle">
+        <header class="app-header"><a class="logo" href="#inicio">BLOK</a></header>
+        <div class="success-content">
+          <div class="success-mark" aria-hidden="true"><span></span><i></i></div>
+          <h2 id="successTitle">APUESTA<br /><span>REGISTRADA</span></h2>
+          <p>Tu predicción ha sido guardada.</p>
+          <div class="saved-prediction"><span class="avatar avatar-a">✳</span><span><b id="successName">Participante</b><small id="successPrediction">Tu predicción</small></span></div>
+          <p class="good-luck">¡Buena suerte!<span>〰〰〰</span></p>
+        </div>
+        <div class="bottom-actions">
+          <button class="primary-action" data-view-target="welcome"><span>VOLVER AL INICIO</span><b>→</b></button>
+          <button class="text-action" data-view-target="results">VER RESULTADOS <span>↗</span></button>
+        </div>
+      </section>
+
+      <section class="app-view results-view" data-view="results" aria-labelledby="resultsTitle">
+        <header class="app-header">
+          <button class="back-button" data-view-target="welcome" aria-label="Volver">← <span>VOLVER</span></button>
+          <a class="logo logo-small" href="#inicio">BLOK</a>
+        </header>
+        <div class="view-content">
+          <p class="micro-label">02 / RESULTADOS</p>
+          <h2 id="resultsTitle">LOS QUE LA<br /><span>VIERON VENIR</span></h2>
+          <div id="resultsContent" class="results-content"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <aside id="adminPanel" class="admin-panel" hidden>
+    <div class="admin-panel-head"><div><span class="micro-label">MODO ORGANIZACIÓN</span><h2>CIERRA LA<br />APUESTA</h2></div><button id="closeAdmin" class="close-admin" aria-label="Cerrar panel">×</button></div>
+    <p class="admin-intro">Publica el ganador oficial. Las predicciones acertadas aparecerán automáticamente.</p>
+    <div id="adminAuth" class="admin-auth" hidden>
+      <p>Inicia sesión con la cuenta de organización.</p>
+      <form id="adminLoginForm"><label for="adminEmail">EMAIL</label><input id="adminEmail" type="email" autocomplete="email" required /><label for="adminPassword">CONTRASEÑA</label><input id="adminPassword" type="password" autocomplete="current-password" required /><button type="submit">ENTRAR →</button></form>
+      <p id="adminAuthMessage" class="form-message" role="status"></p>
+    </div>
+    <div id="adminControls">
+      <form id="winnerForm" class="winner-form"><label for="winnerName">GANADOR/A OFICIAL</label><div class="winner-input-row"><input id="winnerName" placeholder="Nombre del escalador/a" maxlength="80" required /><button type="submit">PUBLICAR →</button></div></form>
+      <div class="admin-stats"><span><b id="adminEntryCount">0</b> PARTICIPANTES</span><span><b id="adminWinnerCount">0</b> ACIERTOS</span><button type="button" id="clearData">BORRAR DATOS</button></div>
+      <div id="adminEntries" class="admin-entries"></div>
+      <button type="button" id="adminLogout" class="admin-logout" hidden>CERRAR SESIÓN</button>
+    </div>
+    <p id="adminWarning" class="admin-warning"></p>
+  </aside>
+  <div class="panel-scrim" id="panelScrim" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

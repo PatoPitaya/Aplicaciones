@@ -1,0 +1,11 @@
+# Blueprint de Render: sitio estático (gratis, siempre activo, no se duerme).
+services:
+  - type: web
+    name: la-apuesta-blok
+    runtime: static
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+
