@@ -5,6 +5,6 @@
  * Nunca pongas una service_role key en una página web.
  */
 window.BLOK_SUPABASE_CONFIG = {
-  url: '',
-  anonKey: ''
+  url: 'https://fbtemizyucpseippqtqc.supabase.co',
+  anonKey: 'sb_publishable_T5fJv9_L8XBjnsY18t3ozA_DIVg-ABg'
 };
