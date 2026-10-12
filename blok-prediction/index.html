@@ -25,6 +25,7 @@
           <p class="micro-label">BLOK / CLIMB PREDICTIONS</p>
           <h1 id="welcomeTitle">¿QUIÉN SE<br />LLEVA LA<br /><span>FINAL?</span></h1>
           <p class="welcome-copy">Apuesta por quien gana la final y entra en el sorteo del premio.</p>
+          <p class="deadline-note" id="deadlineNote"><b>Apuestas abiertas hasta las 21:00.</b> La final empieza a las 22:00.</p>
           <div class="climb-poster" aria-hidden="true">
             <span class="poster-tape tape-one"></span>
             <span class="poster-tape tape-two"></span>
@@ -52,7 +53,7 @@
           <p class="micro-label">01 / TU APUESTA</p>
           <h2 id="predictionTitle">MI <span>APUESTA</span></h2>
           <p class="view-lead">¿Quién gana la final?</p>
-          <p class="view-helper">Escribe tu nombre y elige un escalador.</p>
+          <p class="view-helper">Escribe tu nombre y elige un escalador. Puedes apostar hasta las 21:00.</p>
           <form id="predictionForm" class="prediction-form">
             <label for="participantName">TU NOMBRE</label>
             <input id="participantName" name="name" autocomplete="name" placeholder="¿Cómo te llamas?" maxlength="60" required />
@@ -124,6 +125,7 @@
       <p id="adminAuthMessage" class="form-message" role="status"></p>
     </div>
     <div id="adminControls">
+      <div class="open-control"><p id="openStatus" class="open-status"></p><button type="button" id="toggleOpen" class="toggle-open"></button></div>
       <form id="winnerForm" class="winner-form"><label for="winnerName">GANADOR/A OFICIAL</label><div class="winner-input-row"><input id="winnerName" placeholder="Nombre del escalador/a" maxlength="80" required /><button type="submit">PUBLICAR →</button></div></form>
       <div class="admin-stats"><span><b id="adminEntryCount">0</b> PARTICIPANTES</span><span><b id="adminWinnerCount">0</b> ACIERTOS</span><button type="button" id="clearData">BORRAR DATOS</button></div>
       <div id="adminEntries" class="admin-entries"></div>

@@ -134,6 +134,14 @@ function render() {
   nameInput.disabled = !state.predictionsOpen;
   climberInput.disabled = !state.predictionsOpen;
   form.querySelector('[type="submit"]').disabled = !state.predictionsOpen;
+  contactValueInput.disabled = !state.predictionsOpen;
+  document.querySelectorAll('[data-climber-choice], input[name="contactType"]').forEach((control) => { control.disabled = !state.predictionsOpen; });
+  document.querySelector('#deadlineNote').innerHTML = state.predictionsOpen
+    ? '<b>Apuestas abiertas hasta las 21:00.</b> La final empieza a las 22:00.'
+    : '<b>Las apuestas están cerradas.</b> ¡Que gane el mejor!';
+  document.querySelector('#openStatus').textContent = state.predictionsOpen ? 'APUESTAS ABIERTAS' : 'APUESTAS CERRADAS';
+  document.querySelector('#toggleOpen').textContent = state.predictionsOpen ? 'CERRAR APUESTAS YA' : 'REABRIR APUESTAS';
+  document.querySelector('#toggleOpen').classList.toggle('is-closed', !state.predictionsOpen);
   document.querySelector('#storageNote').textContent = remoteEnabled
     ? 'Una predicción por persona. Se guarda para todo el evento.'
     : 'Una predicción por persona. ¡Suerte!';
@@ -236,6 +244,14 @@ document.querySelectorAll('[data-climber-choice]').forEach((button) => {
   });
 });
 climberInput.addEventListener('input', updateClimberSelection);
+document.querySelectorAll('input[name="contactType"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    contactValueInput.value = '';
+    updateContactField();
+    contactValueInput.focus();
+  });
+});
+updateContactField();
 document.querySelector('#closeAdmin').addEventListener('click', () => setPanel(false));
 scrim.addEventListener('click', () => setPanel(false));
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setPanel(false); });
@@ -261,6 +277,30 @@ document.querySelector('#adminLoginForm').addEventListener('submit', async (even
   }
   adminAuthMessage.textContent = '';
   updateAdminUi();
+});
+
+document.querySelector('#toggleOpen').addEventListener('click', async (event) => {
+  if (!isAdmin) return;
+  const open = !state.predictionsOpen;
+  if (!open && !window.confirm('¿Cerrar las apuestas? Nadie más podrá participar.')) return;
+  const button = event.currentTarget;
+  setSubmitting(button, true);
+  try {
+    if (remoteEnabled) {
+      const response = await database.from('event_settings').update({ predictions_open: open, updated_at: new Date().toISOString() }).eq('id', 'main');
+      if (response.error) throw response.error;
+      await refresh();
+    } else {
+      state.predictionsOpen = open;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      render();
+    }
+  } catch (error) {
+    console.error(error);
+    window.alert('No se pudo cambiar el estado de las apuestas.');
+  } finally {
+    setSubmitting(button, false);
+  }
 });
 
 document.querySelector('#winnerForm').addEventListener('submit', async (event) => {
