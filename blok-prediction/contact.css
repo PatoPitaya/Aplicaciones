@@ -1,9 +1,35 @@
-.contact-choice { display: flex; gap: 8px; align-items: center; border: 0; margin: 0 0 18px; padding: 0; }
-.contact-choice legend { width: 100%; padding: 0 0 8px; font: 10px var(--mono); letter-spacing: .08em; color: var(--muted); }
-.contact-type { display: inline-flex !important; align-items: center; margin: 0 !important; cursor: pointer; position: relative; }
-.contact-type input { position: absolute; opacity: 0; width: 100% !important; height: 100%; min-height: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; cursor: pointer; }
-.contact-type span { border: 1px solid var(--ink); border-radius: 2px; padding: 10px 14px; font: 11px var(--mono); letter-spacing: .06em; color: var(--ink); }
-.contact-type input:checked + span { background: var(--ink); color: #fff; }
-.contact-type input:focus-visible + span { outline: 3px solid var(--yellow); outline-offset: 2px; }
+/* Contact Choice Styling — Authentic Raw Boulder Tape Style */
+.contact-choice {
+  display: flex; gap: 8px; align-items: center; border: 0; margin: 0 0 16px; padding: 0;
+}
+.contact-choice legend {
+  width: 100%; padding: 0 0 8px; font: 700 11px var(--font-mono); letter-spacing: .08em;
+  color: var(--mauve); text-transform: uppercase;
+}
+.contact-type {
+  display: inline-flex !important; align-items: center; margin: 0 !important; cursor: pointer; position: relative;
+}
+.contact-type input {
+  position: absolute; opacity: 0; width: 100% !important; height: 100%; min-height: 0 !important;
+  margin: 0 !important; padding: 0 !important; border: 0 !important; cursor: pointer;
+}
+.contact-type span {
+  border: 1.5px solid var(--line-solid); border-radius: 0; padding: 8px 14px;
+  font: 700 11px var(--font-mono); letter-spacing: .06em; color: var(--chalk-dim);
+  background: rgba(14, 6, 12, 0.88); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
+  transition: all .12s ease;
+}
+.contact-type:hover span {
+  border-color: var(--chalk); color: var(--chalk); transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.9);
+}
+.contact-type input:checked + span {
+  background: var(--chalk); border-color: var(--chalk); color: var(--chalk-dark);
+  box-shadow: 3px 3px 0 var(--mauve);
+}
+.contact-type input:focus-visible + span {
+  outline: 2px solid var(--mauve-bright); outline-offset: 2px;
+}
+
 .admin-entry span:first-child b, .admin-entry span:first-child small { display: block; }
-.admin-entry span:first-child small { margin-top: 3px; color: var(--muted); font: 10px var(--mono); word-break: break-all; }
+.admin-entry span:first-child small { margin-top: 2px; color: var(--chalk-muted); font: 700 9.5px var(--font-mono); word-break: break-all; }

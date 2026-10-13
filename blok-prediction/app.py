@@ -36,7 +36,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
                 {
                     "status": "ok",
-                    "app": "La Apuesta",
+                    "app": "Blok Open XXL",
                     "time": datetime.now(timezone.utc).isoformat(),
                 },
             )

@@ -1,40 +1,53 @@
-# La Apuesta — primera versión
+# BLOK OPEN XXL — Competition Predictions & Raffle App
 
-Una página para que los asistentes escriban su nombre y predigan quién ganará la final de escalada. Al terminar, la organización publica el nombre oficial y la página muestra automáticamente a quienes acertaron.
+A sleek, mobile-first web app for attendees at **Klimzaal Blok** (Hoboken, Antwerp) to predict the finals champion of **BLOK OPEN XXL** (presented by **K2 × TENAYA**), track live crowd odds, and enter the official prize raffle (exclusive merch & goodies).
 
-## Abrir en VS Code
+---
 
-1. Abre la carpeta `blok-prediction` en Visual Studio Code.
-2. Abre `index.html` en un navegador. Para una vista previa cómoda puedes instalar la extensión **Live Server** y elegir “Open with Live Server”.
+## What's Included
 
-No necesita instalar paquetes ni ejecutar un servidor de aplicación.
+- **Official Event Branding:** Matches the official competition flyer (hoodie wine palette, chalk white, dusty mauve accents, finals at 20:30).
+- **Live Crowd Odds:** Real-time breakdown of attendee predictions per climber with percentage bars.
+- **Admin Lucky Draw Raffle:** Instant randomized drawing from all participants who correctly guessed the champion, with contact information for the speaker/podium ceremony.
+- **Contact-based Duplicate Prevention:** Allows participants with common names to enter while preventing multiple entries using the same email or phone.
+- **Dual Mode (Local & Supabase):** Works out-of-the-box locally in `localStorage`, and connects seamlessly to Supabase for real-time mobile sync.
 
-## Cómo probarla
+---
 
-1. Añade una predicción con un nombre de participante y el nombre de un escalador.
-2. Abre **Organización** en la esquina superior derecha.
-3. Publica el nombre del ganador. Las predicciones coincidentes aparecen como aciertos, sin distinguir mayúsculas ni tildes.
-4. **Borrar datos** reinicia la demostración en este navegador.
+## Quick Start in VS Code
 
-## Usarla con los móviles de los participantes
+1. Open this folder in Visual Studio Code.
+2. Open `index.html` with **Live Server**, or run:
+   ```bash
+   py app.py
+   ```
+   and visit `http://127.0.0.1:8000`.
 
-El proyecto ya tiene una conexión opcional preparada para Supabase. Es necesaria para que los móviles compartan predicciones.
+---
 
-1. Crea un proyecto en [Supabase](https://supabase.com/).
-2. En el editor SQL de Supabase, abre y ejecuta `supabase-schema.sql`.
-3. Crea una cuenta de correo y contraseña para organización en **Authentication > Users**. Copia su UUID y ejecuta la última instrucción comentada de `supabase-schema.sql` con ese UUID.
-4. Copia la URL del proyecto y la clave pública `anon` desde **Project Settings > API** en `supabase-config.js`.
-5. Publica esta carpeta en Netlify, Vercel o GitHub Pages. Cada asistente debe abrir esa misma URL.
+## Live Mobile Deployment with Supabase
 
-Cuando las dos claves de `supabase-config.js` están vacías, la página funciona en modo local. Con Supabase configurado, el área **Organización** pide el correo y la contraseña autorizados antes de publicar el ganador.
+1. Create a project on [Supabase](https://supabase.com/).
+2. Run `supabase-schema.sql` in the Supabase SQL Editor.
+3. In Supabase **Authentication > Users**, create an organizer account (email + password).
+4. Copy the user's UUID and add it to `public.admin_users`:
+   ```sql
+   insert into public.admin_users (user_id) values ('PASTE-ORGANIZATION-UUID-HERE');
+   ```
+5. Copy your project URL and `anon` public key into `supabase-config.js`.
+6. Deploy the folder to GitHub Pages, Netlify, Vercel, or Render. Generate a QR code pointing to the live URL for attendees to scan at the gym!
 
-Nunca añadas una clave `service_role` al archivo `supabase-config.js`.
+---
 
-## Personalizar
+## File Structure
 
-- Colores y tipografía: variables CSS al inicio de `styles.css`.
-- Nombre del evento y textos: `index.html`.
-- Ilustración, rutas y agarres: sección `.hero-art` en `index.html` y estilos de `.hero-art`, `.hold` y `.route` en `styles.css`.
-- Cambia el arte abstracto por fotos del gimnasio cuando estén disponibles.
-
-Los nombres, colores y detalles de BLOK son una dirección visual provisional; puedes sustituirlos por la identidad oficial del evento.
+| File | Purpose |
+| --- | --- |
+| `index.html` | Semantic markup, views (Welcome, Prediction, Success, Results), and Admin drawer. |
+| `styles.css` | Blok Open XXL design system (hoodie wine `#200f19`, chalk white, dusty mauve `#c49ba7`, gold). |
+| `contact.css` | Radio pills and contact field styling. |
+| `app.js` | App state, prediction submission, crowd odds calculation, lucky draw raffle, and Supabase realtime. |
+| `flyer.jpg` | Official flyer asset featuring the competition credentials. |
+| `supabase-schema.sql` | Database schema, policies (RLS), and uniqueness constraints. |
+| `supabase-config.js` | Supabase credentials (`url` and `anonKey`). |
+| `app.py` | Local preview server and health check endpoint. |

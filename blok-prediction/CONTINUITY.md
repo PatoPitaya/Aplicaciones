@@ -1,43 +1,51 @@
-# Continuidad del proyecto — La Apuesta
+# Continuity Guide — BLOK OPEN XXL
 
-## Estado actual
+## Current Status
 
-La aplicación funciona como una página estática y no necesita instalar dependencias.
+The application has been transformed to match the official **BLOK OPEN XXL** event identity from Klimzaal Blok (Hoboken, Antwerp, 24.10.2026):
 
-- Los asistentes introducen su nombre y el escalador/a que creen que ganará.
-- La organización abre el panel **Organización**, publica el ganador oficial y ve automáticamente los aciertos.
-- Si `supabase-config.js` está vacío, los datos se guardan en `localStorage` del navegador actual. Con Supabase configurado se comparten entre todos los móviles.
-- El diseño sigue la identidad de Klimzaal Blok (klimzaalblok.be): verde profundo `#244343`, blanco, amarillo cálido `#ffd362`, tipografía grotesca (Inter Tight, sustituta de Diatype) y mono (DM Mono, sustituta de Monument Grotesk Mono). Los colores están como variables al inicio de `styles.css`. `mobile.css` y `admin-auth.css` son restos del diseño anterior y ya no se cargan.
+1. **Schedule & Timing:**
+   - Finals begin at **20:30**.
+   - Predictions close at **20:00**.
+   - Date: **24.10.2026**.
+2. **Language & Localization:**
+   - Completely in English (international climbing audience in Antwerp/Benelux).
+   - Event presenters: **K2 × TENAYA PRESENT**.
+   - Athletes Prize pool: **€7,000 PRIZE MONEY** (for podium competitors on the wall). Spectators enter the raffle for merch & goodies.
+3. **Visual Identity & Authentic Bouldering Aesthetic:**
+   - Moved away from generic "AI dark SaaS" cards (no rounded glassmorphic pills, no glowing dots).
+   - Genuine urban bouldering & street poster look inspired by Klimzaal Blok:
+     - Condensed poster typography (`Bebas Neue` for titles, `Syne` for headings).
+     - Raw competition tags & timestamps in `Space Mono` (`[ LOCKS // 20:00 ]`, `BIB #01`).
+     - Real physical metaphors: climbing finger tape tags (`.tape-tag`), brutalist offset block shadows (`box-shadow: 4px 4px 0 var(--mauve)`), and competition scorecard style for athlete picks.
+     - Gritty duotone flyer background showing chalk-dusted hands and taped fingers.
+4. **Gamification & Lucky Draw:**
+   - **Live Crowd Odds:** Computes live prediction percentages per climber with sleek progress bars.
+   - **Lucky Draw Raffle:** In the admin panel, organizers can draw a random winner among all participants who correctly predicted the champion, displaying their contact info for the MC / podium ceremony.
+   - The raffle winner also appears on the public results screen.
+5. **Database & Technical:**
+   - Unique constraint updated to prevent multiple entries per contact (email/phone), without blocking distinct participants who share the same first name.
+   - GDPR privacy note displayed for contact input.
+   - Schema includes `raffle_winner` in `event_settings`.
 
-## Cómo ejecutarla
+6. **Two-Step Clean Prediction Flow:**
+   - **Step 1 (Details modal):** High-contrast participant inputs (Name, Email, Phone) with `#ffffff` text on solid `#0a0309` cards.
+   - **Step 2 (Athlete picker):** Strictly **no-scroll view** (`100dvh`, `overflow: hidden`) featuring 5 Men and 5 Women finalists with segmented category switcher (`MEN (5)` / `WOMEN (5)`).
+7. **Organized & Minimalist Admin Panel:**
+   - Clean, modular 4-card structure: Competition Status, Podium Lucky Draw Tool, Live Submissions & Stats Overview, and a secured collapsible Danger Zone.
+   - **Instant Optimistic Toggling:** The predictions toggle button (`#toggleOpen`) updates the UI instantly (turning the status badge and button red for closed, yellow for open) with zero latency, and syncs to Supabase in the background. Gating `!isAdmin` check and blocking `window.confirm` dialogs removed.
+   - **Safe Data Reset:** `#clearData` relocated to the very bottom inside a closed `<details class="admin-danger-zone">`, protected by a typed prompt requiring `"RESET"` in uppercase to prevent accidental data wipes.
 
-Abre `index.html` en el navegador, o abre esta carpeta en VS Code y usa la extensión Live Server.
+## How to Test Locally
 
-## Archivos principales
+Run:
+```bash
+python -m http.server 8000
+```
+And open `http://127.0.0.1:8000`.
 
-| Archivo | Responsabilidad |
-| --- | --- |
-| `index.html` | Estructura, textos, formulario y panel de organización. |
-| `styles.css` | Sistema visual, responsive y arte abstracto de la pared. |
-| `app.js` | Predicciones, ganador oficial, resultados, modo local y conexión a Supabase. |
-| `README.md` | Instrucciones para probar y personalizar. |
-| `supabase-schema.sql` | Tablas y reglas de acceso para el evento compartido. |
-| `supabase-config.js` | Lugar para la URL y la clave pública de Supabase. |
 
-## Estado de la conexión compartida
+## Supabase Readiness
 
-La integración de Supabase ya está implementada. `supabase-schema.sql` incluye ahora la tabla `prediction_contacts` (correo/teléfono, solo legible por organización), que `app.js` ya usaba. Si ya habías ejecutado una versión anterior del esquema, ejecuta solo el bloque nuevo de `prediction_contacts`. Falta crear el proyecto de Supabase, ejecutar el esquema, crear la cuenta de organización y pegar las dos claves públicas en `supabase-config.js`. La guía completa está en `README.md`.
+The database schema (`supabase-schema.sql`) is ready to run in Supabase. Paste project URL and anon key into `supabase-config.js` when ready to go live.
 
-Para previsualizar en local: `py app.py` y abrir http://127.0.0.1:8000 (ver `RUN.md`).
-
-## Buenas decisiones para una siguiente IA
-
-- Mantener HTML/CSS/JavaScript sin framework hasta que sea necesario: el proyecto es fácil de modificar y desplegar.
-- Conservar `normalize()` en `app.js`: compara nombres sin problemas de mayúsculas ni tildes.
-- No usar `localStorage` para la versión pública: cada teléfono tendría datos distintos.
-- Reemplazar el bloque `.hero-art` por fotos reales de Blok cuando estén disponibles, conservando los colores y la composición.
-- Antes de publicar, cambiar el texto provisional de BLOK por la identidad y datos confirmados del evento.
-
-## Petición breve para continuar con otra IA
-
-> Continúa el proyecto en `D:\Aplicaciones\blok-prediction`. Lee primero `README.md` y `CONTINUITY.md`. La app es HTML, CSS y JavaScript sin dependencias de compilación. Supabase ya está preparado en `app.js`; falta configurar el proyecto real, probar el acceso de organización y conservar el diseño editorial existente.
