@@ -10,11 +10,14 @@ const participantEmailInput = document.querySelector('#participantEmail');
 const participantPhoneInput = document.querySelector('#participantPhone');
 const detailsMessage = document.querySelector('#detailsMessage');
 
-const votingAsName = document.querySelector('#votingAsName');
-const climberInput = document.querySelector('#climberName');
+const toWomenScoreBtn = document.querySelector('#toWomenScoreBtn');
+const toMenPickBtn = document.querySelector('#toMenPickBtn');
+const toMenScoreBtn = document.querySelector('#toMenScoreBtn');
 const confirmPredictionBtn = document.querySelector('#confirmPredictionBtn');
 const confirmBtnText = document.querySelector('#confirmBtnText');
 const selectionMessage = document.querySelector('#selectionMessage');
+const womenSelectionMessage = document.querySelector('#womenSelectionMessage');
+const menSelectionMessage = document.querySelector('#menSelectionMessage');
 
 const adminPanel = document.querySelector('#adminPanel');
 const scrim = document.querySelector('#panelScrim');
@@ -25,11 +28,36 @@ const adminAuthMessage = document.querySelector('#adminAuthMessage');
 const appFrame = document.querySelector('#appFrame');
 const drawRaffleBtn = document.querySelector('#drawRaffleBtn');
 const raffleResultBox = document.querySelector('#raffleResultBox');
+const seedTestBtn = document.querySelector('#seedTestBtn');
 
 let isAdmin = true;
 let state = readLocalState();
 let raffleInterval = null;
 let pendingParticipant = null;
+
+// Draft prediction state for the sequential flow (WOMEN FIRST!)
+let draftPick = {
+  women: { climber: '', tops: 4, zones: 4, att_top: 4, att_zone: 4, scoreStr: '4T4z 4 4' },
+  men: { climber: '', tops: 3, zones: 4, att_top: 6, att_zone: 5, scoreStr: '3T4z 6 5' }
+};
+
+// Official Finals Roster (WOMEN FIRST, then MEN)
+const FINALISTS = {
+  women: [
+    { bib: '01', name: 'Chloé Caulier', country: 'BELGIUM', extra: 'BLOK FINALIST' },
+    { bib: '02', name: 'Janja Garnbret', country: 'SLOVENIA', extra: 'BLOK FINALIST' },
+    { bib: '03', name: 'Laura Rogora', country: 'ITALY', extra: 'BLOK FINALIST' },
+    { bib: '04', name: 'Oriane Bertone', country: 'FRANCE', extra: 'BLOK FINALIST' },
+    { bib: '05', name: 'Ai Mori', country: 'JAPAN', extra: 'BLOK FINALIST' }
+  ],
+  men: [
+    { bib: '01', name: 'Hannes Van Duysen', country: 'BELGIUM', extra: 'BLOK FINALIST' },
+    { bib: '02', name: 'Simon Lorenzi', country: 'BELGIUM', extra: 'BLOK FINALIST' },
+    { bib: '03', name: 'Alex Megos', country: 'GERMANY', extra: 'BLOK FINALIST' },
+    { bib: '04', name: 'Adam Ondra', country: 'CZECH REP.', extra: 'BLOK FINALIST' },
+    { bib: '05', name: 'Tomoa Narasaki', country: 'JAPAN', extra: 'BLOK FINALIST' }
+  ]
+};
 
 function readLocalState() {
   try {
@@ -37,8 +65,8 @@ function readLocalState() {
     if (saved && Array.isArray(saved.entries)) {
       return {
         entries: saved.entries,
-        winner: sessionStorage.getItem('blok_test_winner') || '',
-        raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || '',
+        winner: sessionStorage.getItem('blok_test_winner') || saved.winner || '',
+        raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || saved.raffleWinner || '',
         predictionsOpen: saved.predictionsOpen !== false
       };
     }
@@ -54,27 +82,212 @@ function readLocalState() {
 }
 
 const normalize = (value) => String(value || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-const isCorrect = (entry) => Boolean(state.winner) && normalize(entry.climber) === normalize(state.winner);
 const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+// ================= IFSC VALIDATION & SANITIZATION ENGINE =================
+/**
+ * Enforces IFSC rules across 4 boulder problems:
+ * - tops <= 4, zones <= 4
+ * - zones >= tops (always)
+ * - if tops == 0 -> att_top = 0; if tops > 0 -> att_top >= tops
+ * - if zones == 0 -> att_zone = 0; if zones > 0 -> att_zone >= zones
+ * - live format: XT Yz A B (e.g. 4T4z 4 4)
+ */
+function sanitizeIfsc(score) {
+  const s = score || {};
+  let tops = Math.max(0, Math.min(4, parseInt(s.tops, 10) || 0));
+  let zones = Math.max(0, Math.min(4, parseInt(s.zones, 10) || 0));
+
+  if (zones < tops) zones = tops;
+
+  let attTop = parseInt(s.att_top, 10);
+  if (isNaN(attTop)) attTop = tops ? tops : 0;
+  if (tops === 0) {
+    attTop = 0;
+  } else if (attTop < tops) {
+    attTop = tops;
+  }
+
+  let attZone = parseInt(s.att_zone, 10);
+  if (isNaN(attZone)) attZone = zones ? zones : 0;
+  if (zones === 0) {
+    attZone = 0;
+  } else if (attZone < zones) {
+    attZone = zones;
+  }
+
+  const scoreStr = `${tops}T${zones}z ${attTop} ${attZone}`;
+  return {
+    climber: s.climber || '',
+    tops,
+    zones,
+    att_top: attTop,
+    att_zone: attZone,
+    scoreStr
+  };
 }
 
-function isValidPhone(phone) {
-  return /^[0-9+()\s-]{7,}$/.test(phone);
+// Parses stored climber string (JSON or legacy format)
+function parsePrediction(rawClimber) {
+  if (!rawClimber) return null;
+  if (typeof rawClimber === 'object') {
+    return {
+      women: rawClimber.women ? sanitizeIfsc(rawClimber.women) : null,
+      men: rawClimber.men ? sanitizeIfsc(rawClimber.men) : null
+    };
+  }
+  try {
+    const parsed = JSON.parse(rawClimber);
+    if (parsed && (parsed.women || parsed.men)) {
+      return {
+        women: parsed.women ? sanitizeIfsc(parsed.women) : null,
+        men: parsed.men ? sanitizeIfsc(parsed.men) : null
+      };
+    }
+  } catch (e) {
+    // Legacy single climber string
+  }
+
+  const isWoman = FINALISTS.women.some((w) => normalize(w.name) === normalize(rawClimber));
+  if (isWoman) {
+    return {
+      women: { climber: String(rawClimber), tops: 4, zones: 4, att_top: 4, att_zone: 4, scoreStr: '4T4z 4 4' },
+      men: null
+    };
+  }
+  return {
+    women: null,
+    men: { climber: String(rawClimber), tops: 3, zones: 4, att_top: 6, att_zone: 5, scoreStr: '3T4z 6 5' }
+  };
 }
 
+// Parses official winner (JSON string or object)
+function parseOfficialWinner(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') {
+    if (raw.women || raw.men) {
+      return {
+        women: raw.women ? { climber: raw.women.climber, ...sanitizeIfsc(raw.women) } : null,
+        men: raw.men ? { climber: raw.men.climber, ...sanitizeIfsc(raw.men) } : null
+      };
+    }
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && (parsed.women || parsed.men)) {
+      return {
+        women: parsed.women ? { climber: parsed.women.climber, ...sanitizeIfsc(parsed.women) } : null,
+        men: parsed.men ? { climber: parsed.men.climber, ...sanitizeIfsc(parsed.men) } : null
+      };
+    }
+  } catch (e) {
+    // Legacy single winner string
+  }
+  return {
+    women: { climber: String(raw), tops: 4, zones: 4, att_top: 4, att_zone: 4, scoreStr: '4T4z 4 4' },
+    men: null
+  };
+}
+
+// ================= SCORING & TIEBREAKER ALGORITHM =================
+function calculateCategoryScore(prediction, real) {
+  if (!prediction || !real || !real.climber) {
+    return {
+      total: 0,
+      winnerMatch: false,
+      winnerPts: 0,
+      topsPts: 0,
+      zonesPts: 0,
+      attTopPts: 0,
+      attZonePts: 0,
+      exactBonus: 0,
+      attDiff: 99,
+      scoreDiff: 99
+    };
+  }
+
+  const isWinnerMatch = normalize(prediction.climber) === normalize(real.climber);
+  const winnerPts = isWinnerMatch ? 50 : 0;
+
+  const topsDiff = Math.abs((prediction.tops ?? 0) - (real.tops ?? 0));
+  const topsPts = Math.max(0, 20 - topsDiff * 5);
+
+  const zonesDiff = Math.abs((prediction.zones ?? 0) - (real.zones ?? 0));
+  const zonesPts = Math.max(0, 15 - zonesDiff * 4);
+
+  const attTopDiff = Math.abs((prediction.att_top ?? 0) - (real.att_top ?? 0));
+  const attTopPts = Math.max(0, 15 - attTopDiff * 2);
+
+  const attZoneDiff = Math.abs((prediction.att_zone ?? 0) - (real.att_zone ?? 0));
+  const attZonePts = Math.max(0, 10 - attZoneDiff * 2);
+
+  const isFullExact = isWinnerMatch && (topsDiff === 0) && (zonesDiff === 0) && (attTopDiff === 0) && (attZoneDiff === 0);
+  const exactBonus = isFullExact ? 25 : 0;
+
+  const total = winnerPts + topsPts + zonesPts + attTopPts + attZonePts + exactBonus;
+  return {
+    total,
+    winnerMatch: isWinnerMatch,
+    winnerPts,
+    topsPts,
+    zonesPts,
+    attTopPts,
+    attZonePts,
+    exactBonus,
+    attDiff: attTopDiff + attZoneDiff,
+    scoreDiff: topsDiff + zonesDiff
+  };
+}
+
+function scoreParticipant(entry, officialWinner) {
+  const pred = parsePrediction(entry.climber);
+  const womenScore = calculateCategoryScore(pred?.women, officialWinner?.women);
+  const menScore = calculateCategoryScore(pred?.men, officialWinner?.men);
+
+  const totalPoints = womenScore.total + menScore.total;
+  const totalAttemptsDiff = womenScore.attDiff + menScore.attDiff;
+  const totalScoreDiff = womenScore.scoreDiff + menScore.scoreDiff;
+
+  return {
+    entry,
+    pred,
+    womenScore,
+    menScore,
+    totalPoints,
+    totalAttemptsDiff,
+    totalScoreDiff
+  };
+}
+
+function rankParticipants(entries, officialWinner) {
+  if (!officialWinner) return [];
+  const scored = entries.map((e) => scoreParticipant(e, officialWinner));
+
+  scored.sort((a, b) => {
+    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+    if (a.totalAttemptsDiff !== b.totalAttemptsDiff) return a.totalAttemptsDiff - b.totalAttemptsDiff;
+    return a.totalScoreDiff - b.totalScoreDiff;
+  });
+
+  if (scored.length > 0) {
+    const top = scored[0];
+    scored.forEach((item, index) => {
+      item.rank = index + 1;
+      item.isWinner = (
+        item.totalPoints === top.totalPoints &&
+        item.totalAttemptsDiff === top.totalAttemptsDiff &&
+        item.totalScoreDiff === top.totalScoreDiff
+      );
+    });
+  }
+  return scored;
+}
+
+// ================= UI HELPERS =================
 function showDetailsMessage(message, error = false) {
   if (!detailsMessage) return;
   detailsMessage.textContent = message;
   detailsMessage.classList.toggle('error', error);
-}
-
-function showSelectionMessage(message, error = false) {
-  if (!selectionMessage) return;
-  selectionMessage.textContent = message;
-  selectionMessage.classList.toggle('error', error);
 }
 
 function setSubmitting(button, submitting) {
@@ -91,37 +304,19 @@ function showView(viewName) {
   appFrame.scrollTo({ top: 0, behavior: 'instant' });
 }
 
-// Official Finals Roster (5 Men / 5 Women with expandable metadata)
-const FINALISTS = {
-  men: [
-    { bib: '01', name: 'Hannes Van Duysen', country: 'BELGIUM', extra: 'BLOK FINALIST' },
-    { bib: '02', name: 'Simon Lorenzi', country: 'BELGIUM', extra: 'BLOK FINALIST' },
-    { bib: '03', name: 'Alex Megos', country: 'GERMANY', extra: 'BLOK FINALIST' },
-    { bib: '04', name: 'Adam Ondra', country: 'CZECH REP.', extra: 'BLOK FINALIST' },
-    { bib: '05', name: 'Tomoa Narasaki', country: 'JAPAN', extra: 'BLOK FINALIST' }
-  ],
-  women: [
-    { bib: '01', name: 'Chloé Caulier', country: 'BELGIUM', extra: 'BLOK FINALIST' },
-    { bib: '02', name: 'Janja Garnbret', country: 'SLOVENIA', extra: 'BLOK FINALIST' },
-    { bib: '03', name: 'Laura Rogora', country: 'ITALY', extra: 'BLOK FINALIST' },
-    { bib: '04', name: 'Oriane Bertone', country: 'FRANCE', extra: 'BLOK FINALIST' },
-    { bib: '05', name: 'Ai Mori', country: 'JAPAN', extra: 'BLOK FINALIST' }
-  ]
-};
+// ================= SEQUENTIAL WIZARD ENGINE =================
 
-let currentCategory = 'men';
-
-function renderFinalistPool(category = currentCategory) {
-  currentCategory = category;
-  const pool = document.querySelector('#finalistPool');
+// Step 1: Render Women Finalists
+function renderWomenFinalistPool() {
+  const pool = document.querySelector('#womenFinalistPool');
   if (!pool) return;
-  const athletes = FINALISTS[category] || [];
-  const selected = normalize(climberInput ? climberInput.value : '');
+  const athletes = FINALISTS.women;
+  const selectedClimber = normalize(draftPick.women.climber);
 
   pool.innerHTML = athletes.map((a) => {
-    const isSelected = normalize(a.name) === selected;
+    const isSelected = normalize(a.name) === selectedClimber;
     return `
-      <button type="button" class="climber-option ${isSelected ? 'is-selected' : ''}" data-climber-choice="${escapeHtml(a.name)}">
+      <button type="button" class="climber-option ${isSelected ? 'is-selected' : ''}" data-woman-choice="${escapeHtml(a.name)}">
         <span class="bib-tag">${a.bib}</span>
         <span class="climber-meta">
           <b>${escapeHtml(a.name.toUpperCase())}</b>
@@ -135,71 +330,494 @@ function renderFinalistPool(category = currentCategory) {
     `;
   }).join('');
 
-  pool.querySelectorAll('[data-climber-choice]').forEach((button) => {
+  pool.querySelectorAll('[data-woman-choice]').forEach((button) => {
     button.addEventListener('click', () => {
-      if (climberInput) climberInput.value = button.dataset.climberChoice;
-      updateClimberSelection();
+      draftPick.women.climber = button.dataset.womanChoice;
+      draftPick.women = sanitizeIfsc(draftPick.women);
+      renderWomenFinalistPool();
+      if (toWomenScoreBtn) toWomenScoreBtn.disabled = false;
     });
   });
 
-  updateCategoryTabs();
-}
-
-function updateCategoryTabs() {
-  document.querySelectorAll('.category-tab').forEach((tab) => {
-    const isThis = tab.dataset.category === currentCategory;
-    tab.classList.toggle('is-active', isThis);
-    tab.setAttribute('aria-selected', String(isThis));
-  });
-
-  const selected = normalize(climberInput ? climberInput.value : '');
-  const inMen = FINALISTS.men.some((a) => normalize(a.name) === selected);
-  const inWomen = FINALISTS.women.some((a) => normalize(a.name) === selected);
-
-  const menIndicator = document.querySelector('#menTabIndicator');
-  const womenIndicator = document.querySelector('#womenTabIndicator');
-  if (menIndicator) menIndicator.hidden = !inMen;
-  if (womenIndicator) womenIndicator.hidden = !inWomen;
-}
-
-function updateClimberSelection() {
-  const selected = normalize(climberInput ? climberInput.value : '');
-  document.querySelectorAll('[data-climber-choice]').forEach((button) => {
-    button.classList.toggle('is-selected', normalize(button.dataset.climberChoice) === selected);
-  });
-
-  updateCategoryTabs();
-
-  const hasChoice = Boolean(climberInput && climberInput.value.trim());
-  if (confirmPredictionBtn && confirmBtnText) {
-    confirmPredictionBtn.disabled = !hasChoice || !state.predictionsOpen;
-    if (hasChoice) {
-      confirmBtnText.textContent = 'LOCK IN: ' + climberInput.value.trim().toUpperCase();
-    } else {
-      confirmBtnText.textContent = 'TAP AN ATHLETE ABOVE';
-    }
+  if (toWomenScoreBtn) {
+    toWomenScoreBtn.disabled = !draftPick.women.climber || !state.predictionsOpen;
   }
 }
 
+// Step 2: Render Women's IFSC Scorecard
+function renderWomenIfscCard() {
+  const current = draftPick.women;
+  const targetNameEl = document.querySelector('#scoreWomanTargetName');
+  const liveBadge = document.querySelector('#womenIfscLiveScore');
+  const dispAttTop = document.querySelector('#dispWomenAttTop');
+  const dispAttZone = document.querySelector('#dispWomenAttZone');
+
+  if (targetNameEl) {
+    targetNameEl.textContent = current.climber ? current.climber.toUpperCase() : 'CHAMPION';
+  }
+  if (liveBadge) liveBadge.textContent = current.scoreStr;
+  if (dispAttTop) dispAttTop.textContent = current.att_top;
+  if (dispAttZone) dispAttZone.textContent = current.att_zone;
+
+  // Tops Pills
+  document.querySelectorAll('#womenTopsPillRow .ifsc-pill').forEach((pill) => {
+    const val = parseInt(pill.dataset.val, 10);
+    pill.classList.toggle('is-active', val === current.tops);
+  });
+
+  // Zones Pills (zones >= tops)
+  document.querySelectorAll('#womenZonesPillRow .ifsc-pill').forEach((pill) => {
+    const val = parseInt(pill.dataset.val, 10);
+    pill.classList.toggle('is-active', val === current.zones);
+    pill.classList.toggle('is-disabled', val < current.tops);
+  });
+}
+
+// Step 3: Render Men Finalists
+function renderMenFinalistPool() {
+  const pool = document.querySelector('#menFinalistPool');
+  if (!pool) return;
+  const athletes = FINALISTS.men;
+  const selectedClimber = normalize(draftPick.men.climber);
+
+  pool.innerHTML = athletes.map((a) => {
+    const isSelected = normalize(a.name) === selectedClimber;
+    return `
+      <button type="button" class="climber-option ${isSelected ? 'is-selected' : ''}" data-man-choice="${escapeHtml(a.name)}">
+        <span class="bib-tag">${a.bib}</span>
+        <span class="climber-meta">
+          <b>${escapeHtml(a.name.toUpperCase())}</b>
+          <span class="climber-sub">
+            <small>${escapeHtml(a.country)}</small>
+            ${a.extra ? `<span class="climber-extra">${escapeHtml(a.extra)}</span>` : ''}
+          </span>
+        </span>
+        <span class="chalk-check"></span>
+      </button>
+    `;
+  }).join('');
+
+  pool.querySelectorAll('[data-man-choice]').forEach((button) => {
+    button.addEventListener('click', () => {
+      draftPick.men.climber = button.dataset.manChoice;
+      draftPick.men = sanitizeIfsc(draftPick.men);
+      renderMenFinalistPool();
+      if (toMenScoreBtn) toMenScoreBtn.disabled = false;
+    });
+  });
+
+  if (toMenScoreBtn) {
+    toMenScoreBtn.disabled = !draftPick.men.climber || !state.predictionsOpen;
+  }
+}
+
+// Step 4: Render Men's IFSC Scorecard
+function renderMenIfscCard() {
+  const current = draftPick.men;
+  const targetNameEl = document.querySelector('#scoreManTargetName');
+  const liveBadge = document.querySelector('#menIfscLiveScore');
+  const dispAttTop = document.querySelector('#dispMenAttTop');
+  const dispAttZone = document.querySelector('#dispMenAttZone');
+
+  if (targetNameEl) {
+    targetNameEl.textContent = current.climber ? current.climber.toUpperCase() : 'CHAMPION';
+  }
+  if (liveBadge) liveBadge.textContent = current.scoreStr;
+  if (dispAttTop) dispAttTop.textContent = current.att_top;
+  if (dispAttZone) dispAttZone.textContent = current.att_zone;
+
+  // Tops Pills
+  document.querySelectorAll('#menTopsPillRow .ifsc-pill').forEach((pill) => {
+    const val = parseInt(pill.dataset.val, 10);
+    pill.classList.toggle('is-active', val === current.tops);
+  });
+
+  // Zones Pills (zones >= tops)
+  document.querySelectorAll('#menZonesPillRow .ifsc-pill').forEach((pill) => {
+    const val = parseInt(pill.dataset.val, 10);
+    pill.classList.toggle('is-active', val === current.zones);
+    pill.classList.toggle('is-disabled', val < current.tops);
+  });
+}
+
+// Setup Event Listeners for IFSC Controls (Tops, Zones, Attempts Steppers)
+function setupSequentialControls() {
+  // --- Women Tops & Zones Pills ---
+  document.querySelectorAll('#womenTopsPillRow .ifsc-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      const val = parseInt(pill.dataset.val, 10);
+      draftPick.women.tops = val;
+      if (draftPick.women.zones < val) draftPick.women.zones = val;
+      draftPick.women = sanitizeIfsc(draftPick.women);
+      renderWomenIfscCard();
+    });
+  });
+
+  document.querySelectorAll('#womenZonesPillRow .ifsc-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      const val = parseInt(pill.dataset.val, 10);
+      if (val < draftPick.women.tops) draftPick.women.tops = val;
+      draftPick.women.zones = val;
+      draftPick.women = sanitizeIfsc(draftPick.women);
+      renderWomenIfscCard();
+    });
+  });
+
+  // --- Men Tops & Zones Pills ---
+  document.querySelectorAll('#menTopsPillRow .ifsc-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      const val = parseInt(pill.dataset.val, 10);
+      draftPick.men.tops = val;
+      if (draftPick.men.zones < val) draftPick.men.zones = val;
+      draftPick.men = sanitizeIfsc(draftPick.men);
+      renderMenIfscCard();
+    });
+  });
+
+  document.querySelectorAll('#menZonesPillRow .ifsc-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      const val = parseInt(pill.dataset.val, 10);
+      if (val < draftPick.men.tops) draftPick.men.tops = val;
+      draftPick.men.zones = val;
+      draftPick.men = sanitizeIfsc(draftPick.men);
+      renderMenIfscCard();
+    });
+  });
+
+  // --- Stepper (+ / -) for both Women & Men ---
+  document.querySelectorAll('.step-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const cat = btn.dataset.category; // 'women' or 'men'
+      const field = btn.dataset.field; // 'att_top' or 'att_zone'
+      const delta = parseInt(btn.dataset.delta, 10);
+      const current = draftPick[cat];
+
+      current[field] = Math.max(0, (current[field] || 0) + delta);
+      draftPick[cat] = sanitizeIfsc(current);
+
+      if (cat === 'women') renderWomenIfscCard();
+      else renderMenIfscCard();
+    });
+  });
+
+  // Step 1 -> Step 2: "NEXT: SET HER SCORE"
+  if (toWomenScoreBtn) {
+    toWomenScoreBtn.addEventListener('click', () => {
+      if (!draftPick.women.climber) return;
+      renderWomenIfscCard();
+      showView('score-woman');
+    });
+  }
+
+  // Step 2 -> Step 3: "NEXT: PICK MEN'S CHAMPION"
+  if (toMenPickBtn) {
+    toMenPickBtn.addEventListener('click', () => {
+      renderMenFinalistPool();
+      showView('pick-man');
+    });
+  }
+
+  // Step 3 -> Step 4: "NEXT: SET HIS SCORE"
+  if (toMenScoreBtn) {
+    toMenScoreBtn.addEventListener('click', () => {
+      if (!draftPick.men.climber) return;
+      renderMenIfscCard();
+      showView('score-man');
+    });
+  }
+}
+
+// ================= STATS & CROWD ODDS (WOMEN FIRST) =================
 function getCrowdStats() {
-  const counts = {};
+  const womenCounts = {};
+  const menCounts = {};
+  let totalWomen = 0;
+  let totalMen = 0;
+
   state.entries.forEach((entry) => {
-    const climber = (entry.climber || '').trim();
-    if (climber) {
-      counts[climber] = (counts[climber] || 0) + 1;
+    const pred = parsePrediction(entry.climber);
+    if (pred?.women?.climber) {
+      womenCounts[pred.women.climber] = (womenCounts[pred.women.climber] || 0) + 1;
+      totalWomen++;
+    }
+    if (pred?.men?.climber) {
+      menCounts[pred.men.climber] = (menCounts[pred.men.climber] || 0) + 1;
+      totalMen++;
     }
   });
-  const total = state.entries.length;
-  const list = Object.entries(counts)
+
+  const womenList = Object.entries(womenCounts)
     .map(([name, count]) => ({
       name,
       count,
-      pct: total > 0 ? Math.round((count / total) * 100) : 0
+      pct: totalWomen > 0 ? Math.round((count / totalWomen) * 100) : 0
     }))
     .sort((a, b) => b.count - a.count);
-  return { list, total };
+
+  const menList = Object.entries(menCounts)
+    .map(([name, count]) => ({
+      name,
+      count,
+      pct: totalMen > 0 ? Math.round((count / totalMen) * 100) : 0
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return { womenList, menList, total: state.entries.length };
 }
 
+// ================= PUBLIC RESULTS VIEW (WOMEN FIRST) =================
+function renderPublicResults() {
+  const resultsEl = document.querySelector('#resultsContent');
+  if (!resultsEl) return;
+
+  const official = parseOfficialWinner(state.winner);
+  let html = '';
+
+  // 1. Official Champions Banner (Women First, then Men)
+  if (official && (official.women?.climber || official.men?.climber)) {
+    html += `
+      <div class="champions-banner">
+        <span class="champions-tag">🏆 OFFICIAL BOULDER CHAMPIONS</span>
+        <div class="champions-grid">
+          <div class="champ-col">
+            <span class="champ-role">WOMEN'S CHAMPION</span>
+            <b class="champ-name">${escapeHtml(official.women?.climber || 'TBD')}</b>
+            <span class="champ-score-pill">${escapeHtml(official.women?.scoreStr || '—')}</span>
+          </div>
+          <div class="champ-col">
+            <span class="champ-role">MEN'S CHAMPION</span>
+            <b class="champ-name">${escapeHtml(official.men?.climber || 'TBD')}</b>
+            <span class="champ-score-pill">${escapeHtml(official.men?.scoreStr || '—')}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="deadline-pill" style="margin-bottom: 20px; width: 100%;">
+        <span class="status-dot"></span>
+        <span>Finals start at <b>20:30</b> · Official score &amp; winners announced after the podium</span>
+      </div>
+    `;
+  }
+
+  // 2. Lucky Draw Raffle Winner
+  if (state.raffleWinner) {
+    html += `
+      <div class="raffle-winner-card">
+        <span>🎉 OFFICIAL RAFFLE WINNER</span>
+        <h4>${escapeHtml(state.raffleWinner)}</h4>
+        <p>Congratulations! Claim your spectator prize pack at the organizer desk.</p>
+      </div>
+    `;
+  }
+
+  // 3. Ranked Leaderboard & Podium
+  if (official && (official.women?.climber || official.men?.climber)) {
+    const ranked = rankParticipants(state.entries, official);
+    const podiumWinners = ranked.filter((r) => r.isWinner);
+
+    if (podiumWinners.length > 0) {
+      html += `
+        <div class="podium-card">
+          <span class="podium-tag">👑 CONTEST WINNER${podiumWinners.length > 1 ? 'S (TIED)' : ''}</span>
+          ${podiumWinners.map((w) => `
+            <h4 class="podium-name">${escapeHtml(w.entry.name)}</h4>
+            <div class="podium-stats">
+              <span class="podium-points">${w.totalPoints} PTS / 270</span>
+              <small>Women: ${w.womenScore.total} pts · Men: ${w.menScore.total} pts</small>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    if (ranked.length > 0) {
+      html += `
+        <div class="leaderboard-wrap">
+          <div class="leaderboard-header">
+            <span class="leaderboard-title">PREDICTION LEADERBOARD</span>
+            <span class="leaderboard-count">${ranked.length} ENTRIES</span>
+          </div>
+          <div class="leaderboard-list">
+            ${ranked.map((r) => `
+              <div class="lb-entry ${r.isWinner ? 'is-winner' : ''}">
+                <span class="lb-rank">#${r.rank}</span>
+                <div class="lb-info">
+                  <b class="lb-name">${escapeHtml(r.entry.name)}</b>
+                  <span class="lb-picks">
+                    W: ${escapeHtml(r.pred?.women?.climber || '—')} (${escapeHtml(r.pred?.women?.scoreStr || '')}) · 
+                    M: ${escapeHtml(r.pred?.men?.climber || '—')} (${escapeHtml(r.pred?.men?.scoreStr || '')})
+                  </span>
+                </div>
+                <div class="lb-score-col">
+                  <b class="lb-pts">${r.totalPoints} PTS</b>
+                  <span class="lb-breakdown">W:+${r.womenScore.total} M:+${r.menScore.total}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else {
+      html += '<p class="empty-results">No spectator predictions entered yet.</p>';
+    }
+  } else {
+    // 4. Pre-results: Live Crowd Odds Breakdown (Women First!)
+    const crowd = getCrowdStats();
+    if (crowd.total > 0) {
+      html += `
+        <div class="odds-box">
+          <div class="odds-header">
+            <span class="odds-title">WOMEN'S FINALS FAVORITES</span>
+            <span class="odds-total">${crowd.total} total bets</span>
+          </div>
+          ${crowd.womenList.map((item) => `
+            <div class="odds-item">
+              <div class="odds-labels">
+                <span>${escapeHtml(item.name)}</span>
+                <span>${item.pct}% (${item.count})</span>
+              </div>
+              <div class="odds-bar-track">
+                <div class="odds-bar-fill" style="width: ${item.pct}%"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="odds-box">
+          <div class="odds-header">
+            <span class="odds-title">MEN'S FINALS FAVORITES</span>
+            <span class="odds-total">${crowd.total} total bets</span>
+          </div>
+          ${crowd.menList.map((item) => `
+            <div class="odds-item">
+              <div class="odds-labels">
+                <span>${escapeHtml(item.name)}</span>
+                <span>${item.pct}% (${item.count})</span>
+              </div>
+              <div class="odds-bar-track">
+                <div class="odds-bar-fill" style="width: ${item.pct}%"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      html += '<p class="empty-results">No predictions submitted yet. Be the first to vote!</p>';
+    }
+  }
+
+  resultsEl.innerHTML = html;
+}
+
+// ================= RENDER ENTIRE STATE =================
+function render() {
+  const official = parseOfficialWinner(state.winner);
+  const ranked = rankParticipants(state.entries, official);
+  const correctCount = ranked.filter((r) => r.isWinner).length;
+
+  document.querySelector('#adminEntryCount').textContent = state.entries.length;
+  document.querySelector('#adminWinnerCount').textContent = official ? correctCount : '—';
+
+  // Update Admin Champion Status Badge (Women & Men)
+  const championStatusEl = document.querySelector('#championStatus');
+  if (championStatusEl) {
+    if (official && (official.women?.climber || official.men?.climber)) {
+      championStatusEl.textContent = `${official.women?.climber || ''} & ${official.men?.climber || ''}`.toUpperCase();
+      championStatusEl.className = 'status-badge announced';
+      championStatusEl.title = `Official Champions: Women (${official.women?.climber} ${official.women?.scoreStr}), Men (${official.men?.climber} ${official.men?.scoreStr})`;
+    } else {
+      championStatusEl.textContent = 'NOT DECLARED';
+      championStatusEl.className = 'status-badge pending';
+      championStatusEl.title = 'No champions published yet';
+    }
+  }
+
+  if (participantNameInput) participantNameInput.disabled = !state.predictionsOpen;
+  if (participantEmailInput) participantEmailInput.disabled = !state.predictionsOpen;
+  if (participantPhoneInput) participantPhoneInput.disabled = !state.predictionsOpen;
+  if (detailsForm) {
+    const subBtn = detailsForm.querySelector('[type="submit"]');
+    if (subBtn) subBtn.disabled = !state.predictionsOpen;
+  }
+
+  const deadlineEl = document.querySelector('#deadlineNote');
+  if (deadlineEl) {
+    deadlineEl.innerHTML = state.predictionsOpen
+      ? '<span class="status-dot"></span><span>Predictions open until <b>20:00</b> · Finals at <b>20:30</b></span>'
+      : '<span class="status-dot is-closed"></span><span>Predictions are <b>closed</b> · Finals in progress!</span>';
+  }
+
+  const poolBox = document.querySelector('#poolControlBox');
+  if (poolBox) {
+    poolBox.classList.toggle('is-closed', !state.predictionsOpen);
+  }
+
+  const openStatusEl = document.querySelector('#openStatus');
+  if (openStatusEl) {
+    openStatusEl.textContent = state.predictionsOpen ? 'PREDICTIONS OPEN' : '🔴 PREDICTIONS CLOSED';
+    openStatusEl.className = `status-badge ${state.predictionsOpen ? 'open' : 'closed'}`;
+  }
+
+  const toggleBtn = document.querySelector('#toggleOpen');
+  if (toggleBtn) {
+    toggleBtn.textContent = state.predictionsOpen ? 'CLOSE PREDICTIONS NOW' : '🔓 RE-OPEN PREDICTIONS';
+    toggleBtn.classList.toggle('is-closed', !state.predictionsOpen);
+  }
+
+  // Admin Entries List (Women first)
+  const entriesBox = document.querySelector('#adminEntries');
+  if (entriesBox) {
+    entriesBox.innerHTML = state.entries.length
+      ? [...state.entries].reverse().map((entry) => {
+          const pred = parsePrediction(entry.climber);
+          return `
+            <div class="admin-entry">
+              <span>
+                <b>${escapeHtml(entry.name)}</b>
+                <small>${escapeHtml(entry.contactValue || 'NAME ONLY')}</small>
+              </span>
+              <span>
+                W: ${escapeHtml(pred?.women?.climber || '—')} (${escapeHtml(pred?.women?.scoreStr || '')})<br/>
+                M: ${escapeHtml(pred?.men?.climber || '—')} (${escapeHtml(pred?.men?.scoreStr || '')})
+              </span>
+              <span>SUBMITTED</span>
+            </div>
+          `;
+        }).join('')
+      : '<p class="admin-empty">No participants registered yet.</p>';
+  }
+
+  if (state.raffleWinner && raffleResultBox) {
+    raffleResultBox.hidden = false;
+    raffleResultBox.innerHTML = `
+      <b>🎉 CURRENT RAFFLE WINNER</b>
+      <p style="margin:4px 0 0;font-size:14px;color:var(--ink);">${escapeHtml(state.raffleWinner)}</p>
+    `;
+  }
+
+  renderPublicResults();
+  updateAdminUi();
+}
+
+function updateAdminUi() {
+  adminAuth.hidden = isAdmin;
+  adminControls.hidden = !isAdmin;
+  document.querySelector('#adminLogout').hidden = !remoteEnabled || !isAdmin;
+  adminWarning.textContent = remoteEnabled
+    ? (isAdmin ? 'Connected to shared Supabase database. Only authorized organizers can publish results.' : 'Sign in with an authorized account to manage the event.')
+    : 'Local demo mode: Data stored in this browser only. Configure Supabase to share predictions across all mobiles.';
+}
+
+function setPanel(open) {
+  adminPanel.hidden = !open;
+  scrim.hidden = !open;
+  document.querySelector('#adminToggle').setAttribute('aria-expanded', String(open));
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+
+// ================= SUPABASE DATA SYNC =================
 async function loadRemoteState() {
   const requests = [
     database.from('event_settings').select('*').eq('id', 'main').maybeSingle(),
@@ -226,8 +844,8 @@ async function loadRemoteState() {
       contactValue: contactsByPrediction.get(item.id)?.contact_value || item.participant_name,
       createdAt: item.created_at
     })),
-    winner: sessionStorage.getItem('blok_test_winner') || '',
-    raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || '',
+    winner: sessionStorage.getItem('blok_test_winner') || settingsResponse.data?.official_winner || '',
+    raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || settingsResponse.data?.raffle_winner || '',
     predictionsOpen: settingsResponse.data ? (settingsResponse.data.predictions_open !== false) : state.predictionsOpen
   };
 }
@@ -244,200 +862,7 @@ async function refresh() {
   render();
 }
 
-function renderPublicResults(winners) {
-  const results = document.querySelector('#resultsContent');
-  if (!results) return;
-  const crowd = getCrowdStats();
-
-  let html = '';
-
-  // 1. Official Winner Banner (if decided)
-  if (state.winner) {
-    html += `
-      <div class="result-winner">
-        <span>🏆 OFFICIAL CHAMPION</span>
-        <h3>${escapeHtml(state.winner)}</h3>
-      </div>
-    `;
-  } else {
-    html += `
-      <div class="deadline-pill" style="margin-bottom: 20px; width: 100%;">
-        <span class="status-dot"></span>
-        <span>Finals start at <b>20:30</b> · Official results posted after the podium</span>
-      </div>
-    `;
-  }
-
-  // 2. Lucky Draw Raffle Winner (if drawn)
-  if (state.raffleWinner) {
-    html += `
-      <div class="raffle-winner-card">
-        <span>🎉 OFFICIAL RAFFLE WINNER</span>
-        <h4>${escapeHtml(state.raffleWinner)}</h4>
-        <p>Congratulations! Claim your prize at the organizer desk.</p>
-      </div>
-    `;
-  }
-
-  // 3. Crowd Favorites & Odds Breakdown
-  if (crowd.list.length > 0) {
-    html += `
-      <div class="odds-box">
-        <div class="odds-header">
-          <span class="odds-total">${crowd.total} total ${crowd.total === 1 ? 'prediction' : 'predictions'}</span>
-        </div>
-        ${crowd.list.map((item) => `
-          <div class="odds-item">
-            <div class="odds-labels">
-              <span>${escapeHtml(item.name)}</span>
-              <span>${item.pct}% (${item.count})</span>
-            </div>
-            <div class="odds-bar-track">
-              <div class="odds-bar-fill" style="width: ${item.pct}%"></div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  } else {
-    html += '<p class="empty-results">No predictions submitted yet. Be the first to vote!</p>';
-  }
-
-  // 4. List of Correct Guessers (after winner announced)
-  if (state.winner) {
-    if (winners.length > 0) {
-      html += `
-        <p class="result-list-title">CORRECT PREDICTIONS · ${winners.length}</p>
-        ${winners.map((entry, index) => `
-          <div class="result-entry">
-            <strong>${index + 1}</strong>
-            <span>
-              <b>${escapeHtml(entry.name)}</b>
-              <small>Picked: ${escapeHtml(entry.climber)}</small>
-            </span>
-            <i>✓</i>
-          </div>
-        `).join('')}
-      `;
-    } else {
-      html += '<p class="empty-results">Nobody guessed this champion. Thanks for participating!</p>';
-    }
-  }
-
-  results.innerHTML = html;
-}
-
-function render() {
-  const winners = state.entries.filter(isCorrect);
-  document.querySelector('#adminEntryCount').textContent = state.entries.length;
-  document.querySelector('#adminWinnerCount').textContent = winners.length;
-  document.querySelector('#winnerName').value = state.winner;
-
-  if (participantNameInput) participantNameInput.disabled = !state.predictionsOpen;
-  if (participantEmailInput) participantEmailInput.disabled = !state.predictionsOpen;
-  if (participantPhoneInput) participantPhoneInput.disabled = !state.predictionsOpen;
-  if (climberInput) climberInput.disabled = !state.predictionsOpen;
-  if (detailsForm) {
-    const subBtn = detailsForm.querySelector('[type="submit"]');
-    if (subBtn) subBtn.disabled = !state.predictionsOpen;
-  }
-  document.querySelectorAll('[data-climber-choice]').forEach((control) => {
-    control.disabled = !state.predictionsOpen;
-  });
-
-  const deadlineEl = document.querySelector('#deadlineNote');
-  if (deadlineEl) {
-    deadlineEl.innerHTML = state.predictionsOpen
-      ? '<span class="status-dot"></span><span>Predictions open until <b>20:00</b> · Finals at <b>20:30</b></span>'
-      : '<span class="status-dot is-closed"></span><span>Predictions are <b>closed</b> · Finals in progress!</span>';
-  }
-
-  const poolBox = document.querySelector('#poolControlBox');
-  if (poolBox) {
-    poolBox.classList.toggle('is-closed', !state.predictionsOpen);
-  }
-
-  const openStatusEl = document.querySelector('#openStatus');
-  if (openStatusEl) {
-    openStatusEl.textContent = state.predictionsOpen ? 'PREDICTIONS OPEN' : '🔴 PREDICTIONS CLOSED';
-    openStatusEl.className = `status-badge ${state.predictionsOpen ? 'open' : 'closed'}`;
-  }
-
-  const toggleBtn = document.querySelector('#toggleOpen');
-  if (toggleBtn) {
-    toggleBtn.textContent = state.predictionsOpen ? 'CLOSE PREDICTIONS NOW' : '🔓 RE-OPEN PREDICTIONS';
-    toggleBtn.classList.toggle('is-closed', !state.predictionsOpen);
-  }
-
-  const championStatusEl = document.querySelector('#championStatus');
-  if (championStatusEl) {
-    if (state.winner) {
-      championStatusEl.textContent = state.winner.toUpperCase();
-      championStatusEl.className = 'status-badge announced';
-      championStatusEl.title = `Official Champion: ${state.winner}`;
-    } else {
-      championStatusEl.textContent = 'NOT DECLARED';
-      championStatusEl.className = 'status-badge pending';
-      championStatusEl.title = 'No champion published yet';
-    }
-  }
-
-  const storageNote = document.querySelector('#storageNote');
-  if (storageNote) {
-    storageNote.textContent = remoteEnabled
-      ? 'One prediction per participant. Synced live for the event.'
-      : 'One prediction per participant. Good luck!';
-  }
-
-  // Admin entries list
-  const entriesBox = document.querySelector('#adminEntries');
-  entriesBox.innerHTML = state.entries.length
-    ? [...state.entries].reverse().map((entry) => `
-        <div class="admin-entry ${isCorrect(entry) ? 'correct' : ''}">
-          <span>
-            <b>${escapeHtml(entry.name)}</b>
-            <small>${escapeHtml(entry.contactValue || 'NO CONTACT')}</small>
-          </span>
-          <span>${escapeHtml(entry.climber)}</span>
-          <span>${isCorrect(entry) ? '✓ CORRECT' : 'PICKED'}</span>
-        </div>
-      `).join('')
-    : '<p class="admin-empty">No participants registered yet.</p>';
-
-  if (state.raffleWinner && raffleResultBox) {
-    raffleResultBox.hidden = false;
-    raffleResultBox.innerHTML = `
-      <b>🎉 CURRENT RAFFLE WINNER</b>
-      <p style="margin:4px 0 0;font-size:14px;color:var(--ink);">${escapeHtml(state.raffleWinner)}</p>
-    `;
-  }
-
-  renderPublicResults(winners);
-  updateAdminUi();
-  updateClimberSelection();
-}
-
-function updateAdminUi() {
-  adminAuth.hidden = isAdmin;
-  adminControls.hidden = !isAdmin;
-  document.querySelector('#adminLogout').hidden = !remoteEnabled || !isAdmin;
-  adminWarning.textContent = remoteEnabled
-    ? (isAdmin ? 'Connected to shared Supabase database. Only authorized organizers can publish results.' : 'Sign in with an authorized account to manage the event.')
-    : 'Local demo mode: Data stored in this browser only. Configure Supabase to share predictions across all mobiles.';
-}
-
-async function checkAdmin() {
-  return true;
-}
-
-function setPanel(open) {
-  adminPanel.hidden = !open;
-  scrim.hidden = !open;
-  document.querySelector('#adminToggle').setAttribute('aria-expanded', String(open));
-  document.body.style.overflow = open ? 'hidden' : '';
-}
-
-// ================= STEP 1: Details Form Submission (Name-only test mode) =================
+// ================= STEP 0: PARTICIPANT NAME SUBMISSION =================
 if (detailsForm) {
   detailsForm.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -452,18 +877,23 @@ if (detailsForm) {
       return showDetailsMessage('Predictions are now closed for the finals.', true);
     }
 
-    // No duplicate blocking - name only test mode!
     pendingParticipant = { name, email: '', phone: '' };
-    if (votingAsName) votingAsName.textContent = name;
+    document.querySelectorAll('.voting-as-val').forEach((el) => { el.textContent = name; });
     showDetailsMessage('');
-    showSelectionMessage('');
-    renderFinalistPool();
-    showView('pick-winner');
-    updateClimberSelection();
+
+    // Reset draft picks
+    draftPick = {
+      women: { climber: '', tops: 4, zones: 4, att_top: 4, att_zone: 4, scoreStr: '4T4z 4 4' },
+      men: { climber: '', tops: 3, zones: 4, att_top: 6, att_zone: 5, scoreStr: '3T4z 6 5' }
+    };
+
+    // Begin Step 1: Pick Women's Champion!
+    renderWomenFinalistPool();
+    showView('pick-woman');
   });
 }
 
-// ================= STEP 2: Confirm Athlete Prediction =================
+// ================= STEP 4: CONFIRM AND SUBMIT ALL PREDICTIONS =================
 if (confirmPredictionBtn) {
   confirmPredictionBtn.addEventListener('click', async () => {
     if (!pendingParticipant || !pendingParticipant.name) {
@@ -471,79 +901,217 @@ if (confirmPredictionBtn) {
       return;
     }
 
-    const climber = climberInput ? climberInput.value.trim() : '';
-    if (!climber) {
-      return showSelectionMessage('Please tap or select an athlete from the list.', true);
+    if (!draftPick.women.climber || !draftPick.men.climber) {
+      return showDetailsMessage("Please complete both Women's and Men's predictions.", true);
     }
 
     if (!state.predictionsOpen) {
-      return showSelectionMessage('Predictions are now closed.', true);
+      return showDetailsMessage('Predictions are now closed.', true);
     }
 
     setSubmitting(confirmPredictionBtn, true);
-    showSelectionMessage('');
 
     const name = pendingParticipant.name;
-    const contactValue = name;
+    const finalPayload = {
+      women: sanitizeIfsc(draftPick.women),
+      men: sanitizeIfsc(draftPick.men)
+    };
+    const climberJsonStr = JSON.stringify(finalPayload);
 
     try {
       if (remoteEnabled) {
         const response = await database.from('predictions').insert({
           participant_name: name,
-          climber_name: climber
+          climber_name: climberJsonStr
         }).select('id').single();
 
-        if (response.error) {
-          throw response.error;
-        }
-
+        if (response.error) throw response.error;
         await refresh();
       } else {
         state.entries.push({
           id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
           name,
-          climber,
+          climber: climberJsonStr,
           contactType: 'name',
-          contactValue,
+          contactValue: name,
           createdAt: new Date().toISOString()
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         render();
       }
 
-      document.querySelector('#successName').textContent = name;
-      document.querySelector('#successPrediction').textContent = climber;
+      // Populate Success Screen (Women First, then Men)
+      const successName = document.querySelector('#successName');
+      const successWomenPick = document.querySelector('#successWomenPick');
+      const successMenPick = document.querySelector('#successMenPick');
+
+      if (successName) successName.textContent = name;
+      if (successWomenPick) successWomenPick.textContent = `${finalPayload.women.climber} (${finalPayload.women.scoreStr})`;
+      if (successMenPick) successMenPick.textContent = `${finalPayload.men.climber} (${finalPayload.men.scoreStr})`;
+
       if (detailsForm) detailsForm.reset();
-      if (climberInput) climberInput.value = '';
       pendingParticipant = null;
-      updateClimberSelection();
       showView('success');
     } catch (error) {
       console.error(error);
-      showSelectionMessage(error.message || 'Could not save prediction. Please try again.', true);
+      window.alert(error.message || 'Could not save prediction. Please try again.');
     } finally {
       setSubmitting(confirmPredictionBtn, false);
     }
   });
 }
 
-// Lucky Draw Raffle Button in Admin
+// ================= ADMIN: ENTER OFFICIAL FINALS RESULTS (WOMEN FIRST) =================
+const officialResultsForm = document.querySelector('#officialResultsForm');
+if (officialResultsForm) {
+  const adminWomenWinner = document.querySelector('#adminWomenWinner');
+  const adminWomenTops = document.querySelector('#adminWomenTops');
+  const adminWomenZones = document.querySelector('#adminWomenZones');
+  const adminWomenAttTop = document.querySelector('#adminWomenAttTop');
+  const adminWomenAttZone = document.querySelector('#adminWomenAttZone');
+  const adminWomenBadge = document.querySelector('#adminWomenLiveScore');
+
+  const adminMenWinner = document.querySelector('#adminMenWinner');
+  const adminMenTops = document.querySelector('#adminMenTops');
+  const adminMenZones = document.querySelector('#adminMenZones');
+  const adminMenAttTop = document.querySelector('#adminMenAttTop');
+  const adminMenAttZone = document.querySelector('#adminMenAttZone');
+  const adminMenBadge = document.querySelector('#adminMenLiveScore');
+
+  function updateAdminBadges() {
+    if (adminWomenBadge && adminWomenTops && adminWomenZones && adminWomenAttTop && adminWomenAttZone) {
+      const women = sanitizeIfsc({
+        tops: adminWomenTops.value,
+        zones: adminWomenZones.value,
+        att_top: adminWomenAttTop.value,
+        att_zone: adminWomenAttZone.value
+      });
+      adminWomenBadge.textContent = women.scoreStr;
+    }
+    if (adminMenBadge && adminMenTops && adminMenZones && adminMenAttTop && adminMenAttZone) {
+      const men = sanitizeIfsc({
+        tops: adminMenTops.value,
+        zones: adminMenZones.value,
+        att_top: adminMenAttTop.value,
+        att_zone: adminMenAttZone.value
+      });
+      adminMenBadge.textContent = men.scoreStr;
+    }
+  }
+
+  [adminWomenTops, adminWomenZones, adminWomenAttTop, adminWomenAttZone, adminMenTops, adminMenZones, adminMenAttTop, adminMenAttZone].forEach((input) => {
+    if (input) input.addEventListener('input', updateAdminBadges);
+  });
+
+  officialResultsForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const womenWinner = adminWomenWinner.value;
+    const menWinner = adminMenWinner.value;
+
+    if (!womenWinner || !menWinner) {
+      return window.alert("Please select both a Women's and Men's champion.");
+    }
+
+    const officialResult = {
+      women: {
+        climber: womenWinner,
+        ...sanitizeIfsc({
+          tops: adminWomenTops.value,
+          zones: adminWomenZones.value,
+          att_top: adminWomenAttTop.value,
+          att_zone: adminWomenAttZone.value
+        })
+      },
+      men: {
+        climber: menWinner,
+        ...sanitizeIfsc({
+          tops: adminMenTops.value,
+          zones: adminMenZones.value,
+          att_top: adminMenAttTop.value,
+          att_zone: adminMenAttZone.value
+        })
+      }
+    };
+
+    const officialJsonStr = JSON.stringify(officialResult);
+
+    state.winner = officialJsonStr;
+    state.predictionsOpen = false;
+    sessionStorage.setItem('blok_test_winner', officialJsonStr);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    render();
+
+    setPanel(false);
+    showView('results');
+
+    if (remoteEnabled) {
+      const button = event.currentTarget.querySelector('button[type="submit"]');
+      setSubmitting(button, true);
+      try {
+        await database.from('event_settings').update({
+          official_winner: officialJsonStr,
+          predictions_open: false,
+          updated_at: new Date().toISOString()
+        }).eq('id', 'main');
+      } catch (error) {
+        console.warn('Could not sync official winner to remote:', error);
+      } finally {
+        setSubmitting(button, false);
+      }
+    }
+  });
+}
+
+// ================= ADMIN: TOGGLE PREDICTIONS POOL =================
+document.querySelector('#toggleOpen').addEventListener('click', async (event) => {
+  const open = !state.predictionsOpen;
+  const button = event.currentTarget;
+
+  state.predictionsOpen = open;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  render();
+
+  if (remoteEnabled) {
+    setSubmitting(button, true);
+    try {
+      await database.from('event_settings').update({ 
+        predictions_open: open, 
+        updated_at: new Date().toISOString() 
+      }).eq('id', 'main');
+    } catch (error) {
+      console.warn('Remote sync error:', error);
+    } finally {
+      setSubmitting(button, false);
+    }
+  }
+});
+
+// ================= ADMIN: LUCKY DRAW RAFFLE PICKER =================
 if (drawRaffleBtn) {
   drawRaffleBtn.addEventListener('click', async () => {
-    const winners = state.entries.filter(isCorrect);
-    if (!winners.length) {
-      window.alert('No correct predictions available to draw from. Make sure the official winner is set and participants have guessed correctly.');
+    const official = parseOfficialWinner(state.winner);
+    let candidates = [];
+
+    if (official) {
+      const ranked = rankParticipants(state.entries, official);
+      candidates = ranked.filter((r) => r.womenScore.winnerMatch || r.menScore.winnerMatch).map((r) => r.entry);
+    }
+    if (candidates.length === 0) {
+      candidates = state.entries;
+    }
+
+    if (!candidates.length) {
+      window.alert('No participants registered yet to draw from.');
       return;
     }
 
     raffleResultBox.hidden = false;
     drawRaffleBtn.disabled = true;
 
-    // Exciting shuffle animation cycling through winner names for 1.2s
     let counter = 0;
     clearInterval(raffleInterval);
     raffleInterval = setInterval(() => {
-      const candidate = winners[counter % winners.length];
+      const candidate = candidates[counter % candidates.length];
       raffleResultBox.innerHTML = `
         <span class="micro-label" style="color:var(--tape-yellow);">SHUFFLING...</span>
         <b>${escapeHtml(candidate.name)}</b>
@@ -553,21 +1121,18 @@ if (drawRaffleBtn) {
 
     setTimeout(async () => {
       clearInterval(raffleInterval);
-      const chosen = winners[Math.floor(Math.random() * winners.length)];
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
       state.raffleWinner = chosen.name;
+      sessionStorage.setItem('blok_test_raffle_winner', chosen.name);
 
       raffleResultBox.innerHTML = `
         <b>🎉 DRAW WINNER: ${escapeHtml(chosen.name)}</b>
-        <small>Contact: ${escapeHtml(chosen.contactValue || 'N/A')} · Climber: ${escapeHtml(chosen.climber)}</small>
+        <small>Contact: ${escapeHtml(chosen.contactValue || 'NAME ONLY')}</small>
       `;
       drawRaffleBtn.disabled = false;
 
-      // Persist raffle winner
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
-
-      // Launch Dancing Cat Meme Celebration for 10 seconds!
-      launchCatParty(`🎉 RAFFLE DRAW WINNER: ${chosen.name}! 🎁`, `Correctly guessed champion: ${chosen.climber}! 🐱✨`);
 
       if (remoteEnabled) {
         try {
@@ -580,330 +1145,102 @@ if (drawRaffleBtn) {
   });
 }
 
-// ==========================================================================
-// Dancing Cat Memes Celebration (10 Seconds)
-// ==========================================================================
-let catPartyTimeout = null;
-let catPartyCountdownInterval = null;
-
-function playVictoryFanfare() {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-    if (ctx.state === 'suspended') ctx.resume();
-
-    const notes = [
-      { f: 523.25, d: 0.12, t: 0.00 },
-      { f: 659.25, d: 0.12, t: 0.12 },
-      { f: 783.99, d: 0.12, t: 0.24 },
-      { f: 1046.50, d: 0.35, t: 0.36 }
-    ];
-
-    notes.forEach((n) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(n.f, ctx.currentTime + n.t);
-      gain.gain.setValueAtTime(0.18, ctx.currentTime + n.t);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.t + n.d);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + n.t);
-      osc.stop(ctx.currentTime + n.t + n.d);
-    });
-  } catch (err) {
-    // Audio optional, ignore if context restricted
-  }
-}
-
-function launchCatParty(title = 'OFFICIAL CHAMPION DECLARED!', subtitle = '10-second victory cat dance party activated! 🐱✨') {
-  // Clear any existing active celebration
-  if (catPartyTimeout) clearTimeout(catPartyTimeout);
-  if (catPartyCountdownInterval) clearInterval(catPartyCountdownInterval);
-  const existingOverlay = document.querySelector('#catPartyOverlay');
-  if (existingOverlay) existingOverlay.remove();
-
-  playVictoryFanfare();
-
-  const overlay = document.createElement('div');
-  overlay.id = 'catPartyOverlay';
-  overlay.className = 'cat-party-overlay';
-
-  // 100% verified local dancing cat memes (no broken links or hotlinking limits)
-  const catMemes = [
-    {
-      url: 'assets/cats/pure_catjam.gif',
-      bubble: 'CATJAM VIBES! 🎵',
-      anim: 'anim-bounce',
-      hasFrame: false,
-      pos: { bottom: '3%', left: '3%' }
-    },
-    {
-      url: 'assets/cats/cat_comfy1.gif',
-      bubble: 'TOTAL GROOVE! 🕺',
-      anim: 'anim-groove',
-      hasFrame: false,
-      pos: { bottom: '3%', right: '3%' }
-    },
-    {
-      url: 'assets/cats/bongo_cat_cropped.gif',
-      bubble: 'BONGO BEATS! 🎹',
-      anim: 'anim-bounce',
-      hasFrame: true,
-      pos: { bottom: '4%', left: '50%', transform: 'translateX(-50%)' }
-    },
-    {
-      url: 'assets/cats/cat_comfy5.gif',
-      bubble: 'DISCO SALSA! 🌟',
-      anim: 'anim-spin-tilt',
-      hasFrame: false,
-      pos: { top: '15%', left: '3%' }
-    },
-    {
-      url: 'assets/cats/popcat_fast.gif',
-      bubble: 'POP POP POP! 🐱',
-      anim: 'anim-wiggle',
-      hasFrame: true,
-      pos: { top: '38%', left: '3%' }
-    },
-    {
-      url: 'assets/cats/cat_comfy2.gif',
-      bubble: 'KILLER MOVES! 💃',
-      anim: 'anim-jump',
-      hasFrame: false,
-      pos: { top: '38%', right: '3%' }
-    },
-    {
-      url: 'assets/cats/maxwell_spinning.gif',
-      bubble: 'MAXWELL SPIN! 🌀',
-      anim: 'anim-spin-tilt',
-      hasFrame: false,
-      pos: { top: '48%', left: '50%', transform: 'translate(-50%, -50%)' }
-    },
-    {
-      url: 'assets/cats/x1ah_cat.gif',
-      bubble: 'KITTEN CHOIR! 🎶',
-      anim: 'anim-groove',
-      hasFrame: true,
-      pos: { top: '15%', right: '3%' }
-    },
-    {
-      url: 'assets/cats/cat_comfy3.gif',
-      bubble: 'FELINE FLOW! 🔥',
-      anim: 'anim-bounce',
-      hasFrame: false,
-      pos: { bottom: '24%', left: '22%' }
-    },
-    {
-      url: 'assets/cats/cat_comfy4.gif',
-      bubble: 'SUPREME WIGGLE! 🚀',
-      anim: 'anim-jump',
-      hasFrame: false,
-      pos: { bottom: '24%', right: '22%' }
-    }
+// ================= SEED 100 REALISTIC COMMUNITY TEST VOTERS =================
+function generate100CommunityPredictions() {
+  const FIRST_NAMES = [
+    'Emma', 'Lucas', 'Sarah', 'Thomas', 'Mila', 'Liam', 'Olivia', 'Noah', 'Elena', 'Arthur',
+    'Chloe', 'Louis', 'Alice', 'Jules', 'Louise', 'Adam', 'Lina', 'Victor', 'Ines', 'Gabriel',
+    'Amelie', 'Matteo', 'Juliette', 'Florian', 'Charlotte', 'Arno', 'Zoe', 'Wout', 'Manon', 'Kobe',
+    'Fien', 'Jasper', 'Noor', 'Milan', 'Lore', 'Daan', 'Ella', 'Lars', 'Hanne', 'Senne',
+    'Eline', 'Niels', 'Fleur', 'Jonas', 'Amber', 'Ruben', 'Anouk', 'Bram', 'Clara', 'Thijs',
+    'Yuki', 'Robin', 'Anna', 'Jens', 'Maya', 'Sam', 'Sophia', 'Sander', 'Eva', 'Simon',
+    'Nora', 'Vincent', 'Laura', 'Cedric', 'Sara', 'Gilles', 'Julia', 'Nathan', 'Marie', 'Antoine',
+    'Elise', 'Julien', 'Camille', 'Alexandre', 'Lea', 'Sebastien', 'Lotte', 'Nicolas', 'Luka', 'Pierre',
+    'Timo', 'Kenji', 'Felix', 'Leo', 'Oscar', 'Theo', 'Hugo', 'Paul', 'Leon', 'Axel',
+    'David', 'Martin', 'Luka', 'Marko', 'Stefan', 'Jan', 'Matej', 'Sven', 'Mia', 'Victoria'
   ];
 
-  // Falling confetti particles
-  const confettiChars = ['🎉', '🐾', '🐟', '✨', '⭐', '🐱', '🎈', '🏆', '🔥'];
-  let confettiHtml = '';
-  for (let i = 0; i < 28; i++) {
-    const char = confettiChars[i % confettiChars.length];
-    const left = Math.floor(Math.random() * 96) + 2;
-    const dur = (Math.random() * 2.5 + 2.5).toFixed(2);
-    const delay = (Math.random() * 3).toFixed(2);
-    confettiHtml += `<span class="cat-confetti-particle" style="left:${left}vw; animation-duration:${dur}s; animation-delay:${delay}s;">${char}</span>`;
+  const LAST_NAMES = [
+    'Peeters', 'Janssens', 'Maes', 'Jacobs', 'Mertens', 'Willems', 'Claes', 'Goossens', 'Wouters', 'De Smet',
+    'Vermeulen', 'Pauwels', 'Hermans', 'Aerts', 'Michiels', 'Martens', 'Desmet', 'De Vos', 'Dubois', 'Lambert',
+    'Dupont', 'Martin', 'Dumont', 'Leclercq', 'Laurent', 'Renard', 'Simon', 'Vandenberghe', 'Van Damme', 'De Clercq'
+  ];
+
+  const womenCandidates = ['Chloé Caulier', 'Janja Garnbret', 'Laura Rogora', 'Oriane Bertone', 'Ai Mori'];
+  const menCandidates = ['Hannes Van Duysen', 'Simon Lorenzi', 'Alex Megos', 'Adam Ondra', 'Tomoa Narasaki'];
+
+  const seeded = [];
+
+  for (let i = 0; i < 100; i++) {
+    const fName = FIRST_NAMES[i % FIRST_NAMES.length];
+    const lName = LAST_NAMES[(i * 3 + 7) % LAST_NAMES.length];
+    const fullName = `${fName} ${lName}`;
+
+    // Pick distribution
+    const womenIdx = (i % 2 === 0) ? 1 : (i % 5);
+    const menIdx = (i % 3 === 0) ? 3 : (i % 2 === 0 ? 0 : (i % 5));
+
+    // Realistic IFSC scores
+    const womenTops = [3, 3, 4, 4, 4][i % 5];
+    const womenZones = Math.max(womenTops, [4, 4, 4, 4, 3][(i + 2) % 5]);
+    const womenAttTop = womenTops === 0 ? 0 : womenTops + ((i + 1) % 3);
+    const womenAttZone = womenZones === 0 ? 0 : womenZones + (i % 2);
+
+    const menTops = [2, 3, 3, 3, 4, 4][(i + 1) % 6];
+    const menZones = Math.max(menTops, [3, 4, 4, 4][i % 4]);
+    const menAttTop = menTops === 0 ? 0 : menTops + (i % 4);
+    const menAttZone = menZones === 0 ? 0 : menZones + (i % 3);
+
+    const payload = {
+      women: sanitizeIfsc({
+        climber: womenCandidates[womenIdx],
+        tops: womenTops,
+        zones: womenZones,
+        att_top: womenAttTop,
+        att_zone: womenAttZone
+      }),
+      men: sanitizeIfsc({
+        climber: menCandidates[menIdx],
+        tops: menTops,
+        zones: menZones,
+        att_top: menAttTop,
+        att_zone: menAttZone
+      })
+    };
+
+    seeded.push({
+      id: `seed-${i + 1}`,
+      name: fullName,
+      climber: JSON.stringify(payload),
+      contactType: 'name',
+      contactValue: fullName,
+      createdAt: new Date(Date.now() - (100 - i) * 60000).toISOString()
+    });
   }
 
-  // Generate Cats HTML
-  let catsHtml = '';
-  catMemes.forEach((cat) => {
-    let styleStr = '';
-    if (cat.pos.top) styleStr += `top:${cat.pos.top};`;
-    if (cat.pos.bottom) styleStr += `bottom:${cat.pos.bottom};`;
-    if (cat.pos.left) styleStr += `left:${cat.pos.left};`;
-    if (cat.pos.right) styleStr += `right:${cat.pos.right};`;
-    if (cat.pos.transform) styleStr += `transform:${cat.pos.transform};`;
-
-    catsHtml += `
-      <div class="cat-meme-item ${cat.anim} ${cat.hasFrame ? 'has-frame' : ''}" style="${styleStr}">
-        <div class="cat-bubble">${cat.bubble}</div>
-        <img class="cat-meme-img" src="${cat.url}" alt="Dancing Cat Meme" loading="eager" />
-      </div>
-    `;
-  });
-
-  overlay.innerHTML = `
-    ${confettiHtml}
-    <div class="cat-party-banner">
-      <h2 class="cat-party-title">${escapeHtml(title)}</h2>
-      <p class="cat-party-subtitle">${escapeHtml(subtitle)}</p>
-      <div class="cat-party-controls">
-        <span class="cat-party-timer-badge">⏱️ <span id="catPartyCountdown">10</span>s</span>
-        <button type="button" class="cat-party-dismiss-btn" id="dismissCatParty">✕ End celebration</button>
-      </div>
-    </div>
-    ${catsHtml}
-  `;
-
-  document.body.appendChild(overlay);
-
-  // Countdown timer logic for exactly 10 seconds
-  let remainingSeconds = 10;
-  const countdownEl = overlay.querySelector('#catPartyCountdown');
-
-  catPartyCountdownInterval = setInterval(() => {
-    remainingSeconds -= 1;
-    if (countdownEl) {
-      countdownEl.textContent = String(Math.max(0, remainingSeconds));
-    }
-  }, 1000);
-
-  function closeParty() {
-    if (catPartyCountdownInterval) clearInterval(catPartyCountdownInterval);
-    if (catPartyTimeout) clearTimeout(catPartyTimeout);
-    overlay.classList.add('fade-out');
-    setTimeout(() => {
-      if (overlay.parentNode) overlay.remove();
-    }, 450);
-  }
-
-  // Dismiss button click
-  const dismissBtn = overlay.querySelector('#dismissCatParty');
-  if (dismissBtn) {
-    dismissBtn.addEventListener('click', closeParty);
-  }
-
-  // Auto dismiss after 10000ms (exactly 10 seconds)
-  catPartyTimeout = setTimeout(closeParty, 10000);
+  return seeded;
 }
 
-// Navigation & View Switches
-document.querySelector('#adminToggle').addEventListener('click', async () => {
-  setPanel(true);
-  isAdmin = await checkAdmin();
-  updateAdminUi();
-});
-
-document.querySelectorAll('[data-view-target]').forEach((button) => {
-  button.addEventListener('click', () => {
-    const target = button.dataset.viewTarget;
-    if (target === 'pick-winner' && (!pendingParticipant || !pendingParticipant.name)) {
-      showView('register');
-      return;
-    }
-    showView(target);
+if (seedTestBtn) {
+  seedTestBtn.addEventListener('click', () => {
+    const seeded = generate100CommunityPredictions();
+    state.entries = seeded;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    render();
+    window.alert('✅ 100 realistic community predictions seeded (Women first, then Men)!');
   });
-});
+}
 
-document.querySelectorAll('.category-tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    renderFinalistPool(tab.dataset.category);
-  });
-});
-
-document.querySelector('#closeAdmin').addEventListener('click', () => setPanel(false));
-scrim.addEventListener('click', () => setPanel(false));
-document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setPanel(false); });
-
-// Admin Login
-document.querySelector('#adminLoginForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  if (!remoteEnabled) return;
-  const email = document.querySelector('#adminEmail').value.trim();
-  const password = document.querySelector('#adminPassword').value;
-  adminAuthMessage.textContent = 'Verifying credentials...';
-  const response = await database.auth.signInWithPassword({ email, password });
-  if (response.error) {
-    adminAuthMessage.textContent = 'Sign-in failed. Please check email and password.';
-    adminAuthMessage.classList.add('error');
-    return;
-  }
-  isAdmin = await checkAdmin();
-  adminAuthMessage.classList.remove('error');
-  if (!isAdmin) {
-    adminAuthMessage.textContent = 'This account does not have organization permissions.';
-    await database.auth.signOut();
-    return;
-  }
-  adminAuthMessage.textContent = '';
-  updateAdminUi();
-});
-
-// Toggle Predictions Open/Closed (Immediate optimistic UI update)
-document.querySelector('#toggleOpen').addEventListener('click', async (event) => {
-  const open = !state.predictionsOpen;
-  const button = event.currentTarget;
-
-  // 1. Instantly update state & re-render UI
-  state.predictionsOpen = open;
+// Auto-seed if empty on initial load
+if (state.entries.length === 0) {
+  state.entries = generate100CommunityPredictions();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  render();
+}
 
-  // 2. Sync to Supabase in background
-  if (remoteEnabled) {
-    setSubmitting(button, true);
-    try {
-      const response = await database.from('event_settings').update({ 
-        predictions_open: open, 
-        updated_at: new Date().toISOString() 
-      }).eq('id', 'main');
-      if (response.error) {
-        console.warn('Could not update remote database:', response.error);
-      }
-    } catch (error) {
-      console.warn('Remote sync error:', error);
-    } finally {
-      setSubmitting(button, false);
-    }
-  }
-});
-
-// Publish Official Winner (Immediate optimistic UI update)
-document.querySelector('#winnerForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const winner = document.querySelector('#winnerName').value.trim();
-  if (!winner) return;
-
-  // 1. Instantly update state & re-render UI
-  state.winner = winner;
-  state.predictionsOpen = false;
-  sessionStorage.setItem('blok_test_winner', winner);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  render();
-
-  // Close admin panel & display podium results view
-  setPanel(false);
-  showView('results');
-
-  // Launch Dancing Cat Meme Celebration for exactly 10 seconds!
-  launchCatParty(`🎉 WE HAVE A CHAMPION: ${winner}! 🏆`, '10-second victory cat dance party activated! 🐱✨');
-
-  // 2. Sync to Supabase in background
-  if (remoteEnabled) {
-    const button = event.currentTarget.querySelector('button');
-    setSubmitting(button, true);
-    try {
-      const response = await database.from('event_settings').update({ 
-        official_winner: winner, 
-        predictions_open: false, 
-        updated_at: new Date().toISOString() 
-      }).eq('id', 'main');
-      if (response.error) {
-        console.warn('Could not publish result to remote:', response.error);
-      }
-    } catch (error) {
-      console.warn('Remote publish error:', error);
-    } finally {
-      setSubmitting(button, false);
-    }
-  }
-});
-
-// Reset Event Data (Secured with typed confirmation)
+// ================= ADMIN: DANGER ZONE RESET =================
 document.querySelector('#clearData').addEventListener('click', async () => {
   const confirmation = window.prompt(
-    '⚠️ WARNING: This will permanently delete all registered predictions and reset the official champion.\n\nTo confirm, type RESET in capital letters:'
+    '⚠️ WARNING: This will permanently delete all registered predictions and reset the official champions.\n\nTo confirm, type RESET in capital letters:'
   );
 
   if (confirmation !== 'RESET') {
@@ -927,16 +1264,37 @@ document.querySelector('#clearData').addEventListener('click', async () => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
     }
-    window.alert('Todos los datos del evento han sido reiniciados correctamente.');
+    window.alert('All event data successfully reset.');
   } catch (err) {
     console.error(err);
-    window.alert('Error al reiniciar los datos.');
+    window.alert('Error resetting data.');
   }
 });
 
+// ================= GENERAL NAVIGATION & SETUP =================
+document.querySelector('#adminToggle').addEventListener('click', () => {
+  setPanel(true);
+  updateAdminUi();
+});
+
+document.querySelectorAll('[data-view-target]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const target = button.dataset.viewTarget;
+    if ((target === 'pick-woman' || target === 'score-woman' || target === 'pick-man' || target === 'score-man') && (!pendingParticipant || !pendingParticipant.name)) {
+      showView('register');
+      return;
+    }
+    showView(target);
+  });
+});
+
+document.querySelector('#closeAdmin').addEventListener('click', () => setPanel(false));
+scrim.addEventListener('click', () => setPanel(false));
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setPanel(false); });
+
 // Admin Sign Out
 document.querySelector('#adminLogout').addEventListener('click', async () => {
-  await database.auth.signOut();
+  if (remoteEnabled) await database.auth.signOut();
   isAdmin = false;
   updateAdminUi();
 });
@@ -949,5 +1307,6 @@ if (remoteEnabled) {
     .subscribe();
 }
 
-renderFinalistPool('men');
+// Initial setup
+setupSequentialControls();
 refresh();

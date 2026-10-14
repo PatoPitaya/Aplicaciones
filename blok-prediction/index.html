@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=2.7" />
-  <link rel="stylesheet" href="contact.css?v=2.7" />
+  <link rel="stylesheet" href="styles.css?v=2.9" />
+  <link rel="stylesheet" href="contact.css?v=2.9" />
 </head>
 <body>
   <div class="ambient-glow" aria-hidden="true"></div>
@@ -47,7 +47,7 @@
             <b aria-hidden="true">→</b>
           </button>
           <button class="secondary-action" data-view-target="results">
-            <span>LIVE FAN FAVORITES</span>
+            <span>FAN FAVORITES</span>
             <span class="action-arrow">↗</span>
           </button>
         </div>
@@ -89,47 +89,276 @@
         </div>
       </section>
 
-      <!-- ================= STEP 2: PICK WINNER VIEW (NO-SCROLL) ================= -->
-      <section class="app-view pick-winner-view" data-view="pick-winner" aria-labelledby="pickWinnerTitle">
+      <!-- ================= STEP 1 OF 4: PICK WOMEN'S CHAMPION ================= -->
+      <section class="app-view pick-woman-view" data-view="pick-woman" aria-labelledby="pickWomanTitle">
         <header class="app-header">
           <button class="back-button" data-view-target="register" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK open XXL</a>
+          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
         </header>
 
         <div class="view-content">
-          <div class="pick-winner-head">
+          <div class="pick-head">
             <div class="pick-meta-row">
-              <span class="micro-label">STEP 2 OF 2 · FINALS</span>
+              <span class="micro-label">STEP 1 OF 4 · WOMEN'S FINAL</span>
               <div class="voting-as-chip">
                 <span>VOTING AS:</span>
-                <b id="votingAsName">—</b>
+                <b class="voting-as-val">—</b>
               </div>
             </div>
-            <h2 id="pickWinnerTitle">PICK THE <span>WINNER</span></h2>
+            <h2 id="pickWomanTitle">PICK WOMEN'S<br /><span class="title-accent">CHAMPION</span></h2>
+            <p class="pick-instruction">Select the athlete you believe will take 1st place in the women's boulder final.</p>
           </div>
 
-          <!-- Category Segmented Control (5 Men / 5 Women) -->
-          <div class="category-segmented" role="tablist" aria-label="Finals Category">
-            <button type="button" class="category-tab is-active" data-category="men" role="tab" aria-selected="true">
-              <span>MEN (5)</span>
-              <span class="tab-indicator" id="menTabIndicator" hidden>✓</span>
-            </button>
-            <button type="button" class="category-tab" data-category="women" role="tab" aria-selected="false">
-              <span>WOMEN (5)</span>
-              <span class="tab-indicator" id="womenTabIndicator" hidden>✓</span>
-            </button>
-          </div>
-
-          <!-- Finalists Container (Strictly 5 per category, No-scroll) -->
-          <div id="finalistPool" class="climber-list no-scroll-list" aria-label="Official Finalists"></div>
-
-          <input type="hidden" id="climberName" name="climber" />
+          <!-- Women Finalists Pool -->
+          <div id="womenFinalistPool" class="climber-list no-scroll-list" aria-label="Official Women Finalists"></div>
 
           <div class="bottom-actions">
-            <button id="confirmPredictionBtn" class="primary-action" type="button" disabled>
-              <span id="confirmBtnText">TAP AN ATHLETE ABOVE</span>
+            <button id="toWomenScoreBtn" class="primary-action" type="button" disabled>
+              <span>NEXT: SET HER SCORE</span>
+              <b aria-hidden="true">→</b>
+            </button>
+            <div id="womenSelectionMessage" class="form-message" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= STEP 2 OF 4: WOMEN'S SCORE PREDICTION ================= -->
+      <section class="app-view score-woman-view" data-view="score-woman" aria-labelledby="scoreWomanTitle">
+        <header class="app-header">
+          <button class="back-button" data-view-target="pick-woman" aria-label="Go back">
+            ← <span>BACK</span>
+          </button>
+          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+        </header>
+
+        <div class="view-content">
+          <div class="score-meta-strip">
+            <span class="micro-label">STEP 2 OF 4 · WOMEN'S SCORE</span>
+            <div class="voting-as-chip">
+              <span>VOTING AS:</span>
+              <b class="voting-as-val">—</b>
+            </div>
+          </div>
+
+          <!-- Hero Scorecard: Spacious, Elegant, Focused -->
+          <div class="ifsc-card ifsc-card-hero">
+            <!-- 1. Chosen Athlete Name First -->
+            <div class="score-card-top">
+              <span class="score-athlete-label">SELECTED ATHLETE</span>
+              <h2 id="scoreWomanTargetName" class="score-athlete-name">JANJA GARNBRET</h2>
+            </div>
+
+            <!-- 2. Score Badge + 3. 4 Boulders Tag -->
+            <div class="score-hero-row">
+              <div class="score-hero-badge">
+                <span class="score-badge-label">PREDICTED SCORE</span>
+                <b id="womenIfscLiveScore" class="score-badge-val">4T4z 4 4</b>
+              </div>
+              <div class="score-boulders-badge">
+                <span class="boulders-num">4</span>
+                <span class="boulders-text">BOULDERS</span>
+              </div>
+            </div>
+
+            <div class="ifsc-divider"></div>
+
+            <!-- 4. Selectors (Tops, Zones, Attempts) -->
+            <div class="ifsc-body">
+              <div class="ifsc-selectors-grid">
+                <div class="ifsc-group">
+                  <div class="ifsc-label-row">
+                    <span class="ifsc-label">TOPS (T)</span>
+                    <small class="ifsc-sub">0 to 4</small>
+                  </div>
+                  <div class="ifsc-pill-row" id="womenTopsPillRow">
+                    <button type="button" class="ifsc-pill" data-val="0">0</button>
+                    <button type="button" class="ifsc-pill" data-val="1">1</button>
+                    <button type="button" class="ifsc-pill" data-val="2">2</button>
+                    <button type="button" class="ifsc-pill" data-val="3">3</button>
+                    <button type="button" class="ifsc-pill is-active" data-val="4">4</button>
+                  </div>
+                </div>
+
+                <div class="ifsc-group">
+                  <div class="ifsc-label-row">
+                    <span class="ifsc-label">ZONES (z)</span>
+                    <small class="ifsc-sub">≥ Tops</small>
+                  </div>
+                  <div class="ifsc-pill-row" id="womenZonesPillRow">
+                    <button type="button" class="ifsc-pill" data-val="0">0</button>
+                    <button type="button" class="ifsc-pill" data-val="1">1</button>
+                    <button type="button" class="ifsc-pill" data-val="2">2</button>
+                    <button type="button" class="ifsc-pill" data-val="3">3</button>
+                    <button type="button" class="ifsc-pill is-active" data-val="4">4</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ifsc-attempts-grid">
+                <div class="ifsc-attempt-col">
+                  <span class="ifsc-attempt-label">ATTEMPTS TO TOP</span>
+                  <div class="stepper-wrap">
+                    <button type="button" class="step-btn" data-category="women" data-field="att_top" data-delta="-1" aria-label="Decrease Top attempts">−</button>
+                    <span class="step-val" id="dispWomenAttTop">4</span>
+                    <button type="button" class="step-btn" data-category="women" data-field="att_top" data-delta="1" aria-label="Increase Top attempts">+</button>
+                  </div>
+                </div>
+
+                <div class="ifsc-attempt-col">
+                  <span class="ifsc-attempt-label">ATTEMPTS TO ZONE</span>
+                  <div class="stepper-wrap">
+                    <button type="button" class="step-btn" data-category="women" data-field="att_zone" data-delta="-1" aria-label="Decrease Zone attempts">−</button>
+                    <span class="step-val" id="dispWomenAttZone">4</span>
+                    <button type="button" class="step-btn" data-category="women" data-field="att_zone" data-delta="1" aria-label="Increase Zone attempts">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottom-actions">
+            <button id="toMenPickBtn" class="primary-action" type="button">
+              <span>NEXT: PICK MEN'S CHAMPION</span>
+              <b aria-hidden="true">→</b>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= STEP 3 OF 4: PICK MEN'S CHAMPION ================= -->
+      <section class="app-view pick-man-view" data-view="pick-man" aria-labelledby="pickManTitle">
+        <header class="app-header">
+          <button class="back-button" data-view-target="score-woman" aria-label="Go back">
+            ← <span>BACK</span>
+          </button>
+          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+        </header>
+
+        <div class="view-content">
+          <div class="pick-head">
+            <div class="pick-meta-row">
+              <span class="micro-label">STEP 3 OF 4 · MEN'S FINAL</span>
+              <div class="voting-as-chip">
+                <span>VOTING AS:</span>
+                <b class="voting-as-val">—</b>
+              </div>
+            </div>
+            <h2 id="pickManTitle">PICK MEN'S<br /><span class="title-accent">CHAMPION</span></h2>
+            <p class="pick-instruction">Now select the athlete you believe will take 1st place in the men's boulder final.</p>
+          </div>
+
+          <!-- Men Finalists Pool -->
+          <div id="menFinalistPool" class="climber-list no-scroll-list" aria-label="Official Men Finalists"></div>
+
+          <div class="bottom-actions">
+            <button id="toMenScoreBtn" class="primary-action" type="button" disabled>
+              <span>NEXT: SET HIS SCORE</span>
+              <b aria-hidden="true">→</b>
+            </button>
+            <div id="menSelectionMessage" class="form-message" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= STEP 4 OF 4: MEN'S SCORE PREDICTION ================= -->
+      <section class="app-view score-man-view" data-view="score-man" aria-labelledby="scoreManTitle">
+        <header class="app-header">
+          <button class="back-button" data-view-target="pick-man" aria-label="Go back">
+            ← <span>BACK</span>
+          </button>
+          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+        </header>
+
+        <div class="view-content">
+          <div class="score-meta-strip">
+            <span class="micro-label">STEP 4 OF 4 · MEN'S SCORE</span>
+            <div class="voting-as-chip">
+              <span>VOTING AS:</span>
+              <b class="voting-as-val">—</b>
+            </div>
+          </div>
+
+          <!-- Hero Scorecard: Spacious, Elegant, Focused -->
+          <div class="ifsc-card ifsc-card-hero">
+            <!-- 1. Chosen Athlete Name First -->
+            <div class="score-card-top">
+              <span class="score-athlete-label">SELECTED ATHLETE</span>
+              <h2 id="scoreManTargetName" class="score-athlete-name">ADAM ONDRA</h2>
+            </div>
+
+            <!-- 2. Score Badge + 3. 4 Boulders Tag -->
+            <div class="score-hero-row">
+              <div class="score-hero-badge">
+                <span class="score-badge-label">PREDICTED SCORE</span>
+                <b id="menIfscLiveScore" class="score-badge-val">3T4z 6 5</b>
+              </div>
+              <div class="score-boulders-badge">
+                <span class="boulders-num">4</span>
+                <span class="boulders-text">BOULDERS</span>
+              </div>
+            </div>
+
+            <div class="ifsc-divider"></div>
+
+            <!-- 4. Selectors (Tops, Zones, Attempts) -->
+            <div class="ifsc-body">
+              <div class="ifsc-selectors-grid">
+                <div class="ifsc-group">
+                  <div class="ifsc-label-row">
+                    <span class="ifsc-label">TOPS (T)</span>
+                    <small class="ifsc-sub">0 to 4</small>
+                  </div>
+                  <div class="ifsc-pill-row" id="menTopsPillRow">
+                    <button type="button" class="ifsc-pill" data-val="0">0</button>
+                    <button type="button" class="ifsc-pill" data-val="1">1</button>
+                    <button type="button" class="ifsc-pill" data-val="2">2</button>
+                    <button type="button" class="ifsc-pill" data-val="3">3</button>
+                    <button type="button" class="ifsc-pill is-active" data-val="4">4</button>
+                  </div>
+                </div>
+
+                <div class="ifsc-group">
+                  <div class="ifsc-label-row">
+                    <span class="ifsc-label">ZONES (z)</span>
+                    <small class="ifsc-sub">≥ Tops</small>
+                  </div>
+                  <div class="ifsc-pill-row" id="menZonesPillRow">
+                    <button type="button" class="ifsc-pill" data-val="0">0</button>
+                    <button type="button" class="ifsc-pill" data-val="1">1</button>
+                    <button type="button" class="ifsc-pill" data-val="2">2</button>
+                    <button type="button" class="ifsc-pill" data-val="3">3</button>
+                    <button type="button" class="ifsc-pill is-active" data-val="4">4</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ifsc-attempts-grid">
+                <div class="ifsc-attempt-col">
+                  <span class="ifsc-attempt-label">ATTEMPTS TO TOP</span>
+                  <div class="stepper-wrap">
+                    <button type="button" class="step-btn" data-category="men" data-field="att_top" data-delta="-1" aria-label="Decrease Top attempts">−</button>
+                    <span class="step-val" id="dispMenAttTop">6</span>
+                    <button type="button" class="step-btn" data-category="men" data-field="att_top" data-delta="1" aria-label="Increase Top attempts">+</button>
+                  </div>
+                </div>
+
+                <div class="ifsc-attempt-col">
+                  <span class="ifsc-attempt-label">ATTEMPTS TO ZONE</span>
+                  <div class="stepper-wrap">
+                    <button type="button" class="step-btn" data-category="men" data-field="att_zone" data-delta="-1" aria-label="Decrease Zone attempts">−</button>
+                    <span class="step-val" id="dispMenAttZone">5</span>
+                    <button type="button" class="step-btn" data-category="men" data-field="att_zone" data-delta="1" aria-label="Increase Zone attempts">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottom-actions">
+            <button id="confirmPredictionBtn" class="primary-action" type="button">
+              <span id="confirmBtnText">⚡ LOCK IN PREDICTIONS</span>
               <b aria-hidden="true">→</b>
             </button>
             <div id="selectionMessage" class="form-message" role="status" aria-live="polite"></div>
@@ -159,15 +388,19 @@
               <b class="receipt-value" id="successName">Participant</b>
             </div>
             <div class="receipt-row">
-              <span class="receipt-label">PREDICTED WINNER</span>
-              <b class="receipt-value highlight-accent" id="successPrediction">Climber name</b>
+              <span class="receipt-label">WOMEN'S PICK</span>
+              <b class="receipt-value highlight-accent" id="successWomenPick">—</b>
+            </div>
+            <div class="receipt-row">
+              <span class="receipt-label">MEN'S PICK</span>
+              <b class="receipt-value highlight-accent" id="successMenPick">—</b>
             </div>
             <div class="receipt-footer">
               <span>KLIMZAAL BLOK · BLOK OPEN XXL</span>
             </div>
           </div>
 
-          <p class="good-luck-note">Finals kick off at 20:30. Watch the podium ceremony to see if your climber wins and claim your raffle prize!</p>
+          <p class="good-luck-note">Scoring: +50 Winner name · +20 Tops · +15 Zones · +15 Top att · +10 Zone att · +25 Full exact bonus (Max 270 pts). Watch the finals ceremony to see the leaderboard!</p>
         </div>
 
         <div class="bottom-actions">
@@ -242,15 +475,85 @@
           <button type="button" id="toggleOpen" class="admin-toggle-btn toggle-open">CLOSE PREDICTIONS NOW</button>
         </div>
 
-        <!-- Box 2: Official Champion Status & Publish -->
-        <div class="admin-control-box">
+        <!-- Box 2: Official Champion Status & Publish (4 IFSC Boulder Finals) -->
+        <div class="admin-control-box admin-results-box">
           <div class="admin-box-header">
-            <span class="admin-row-tag">OFFICIAL CHAMPION</span>
+            <span class="admin-row-tag">OFFICIAL FINALS RESULTS</span>
             <span id="championStatus" class="status-badge pending">NOT DECLARED</span>
           </div>
-          <form id="winnerForm" class="admin-form-stacked">
-            <input id="winnerName" placeholder="Champion's full name" maxlength="80" required />
-            <button type="submit" class="admin-action-btn">PUBLISH OFFICIAL CHAMPION →</button>
+
+          <form id="officialResultsForm" class="admin-results-form">
+            <!-- Women's Champion Section -->
+            <div class="admin-cat-section">
+              <div class="admin-cat-header">
+                <span class="admin-cat-title">WOMEN'S CHAMPION</span>
+                <span class="admin-cat-badge" id="adminWomenLiveScore">4T4z 5 4</span>
+              </div>
+              <select id="adminWomenWinner" class="admin-select" required>
+                <option value="" disabled selected>Select Women's Champion...</option>
+                <option value="Chloé Caulier">Chloé Caulier (BEL)</option>
+                <option value="Janja Garnbret">Janja Garnbret (SLO)</option>
+                <option value="Laura Rogora">Laura Rogora (ITA)</option>
+                <option value="Oriane Bertone">Oriane Bertone (FRA)</option>
+                <option value="Ai Mori">Ai Mori (JPN)</option>
+              </select>
+              <div class="admin-ifsc-row">
+                <div class="admin-ifsc-field">
+                  <label for="adminWomenTops">TOPS (T)</label>
+                  <input type="number" id="adminWomenTops" min="0" max="4" value="4" required />
+                </div>
+                <div class="admin-ifsc-field">
+                  <label for="adminWomenZones">ZONES (z)</label>
+                  <input type="number" id="adminWomenZones" min="0" max="4" value="4" required />
+                </div>
+                <div class="admin-ifsc-field">
+                  <label for="adminWomenAttTop">ATT. TOP</label>
+                  <input type="number" id="adminWomenAttTop" min="0" max="40" value="5" required />
+                </div>
+                <div class="admin-ifsc-field">
+                  <label for="adminWomenAttZone">ATT. ZONE</label>
+                  <input type="number" id="adminWomenAttZone" min="0" max="40" value="4" required />
+                </div>
+              </div>
+            </div>
+
+            <!-- Men's Champion Section -->
+            <div class="admin-cat-section">
+              <div class="admin-cat-header">
+                <span class="admin-cat-title">MEN'S CHAMPION</span>
+                <span class="admin-cat-badge" id="adminMenLiveScore">3T4z 6 5</span>
+              </div>
+              <select id="adminMenWinner" class="admin-select" required>
+                <option value="" disabled selected>Select Men's Champion...</option>
+                <option value="Hannes Van Duysen">Hannes Van Duysen (BEL)</option>
+                <option value="Simon Lorenzi">Simon Lorenzi (BEL)</option>
+                <option value="Alex Megos">Alex Megos (GER)</option>
+                <option value="Adam Ondra">Adam Ondra (CZE)</option>
+                <option value="Tomoa Narasaki">Tomoa Narasaki (JPN)</option>
+              </select>
+              <div class="admin-ifsc-row">
+                <div class="admin-ifsc-field">
+                  <label for="adminMenTops">TOPS (T)</label>
+                  <input type="number" id="adminMenTops" min="0" max="4" value="3" required />
+                </div>
+                <div class="admin-ifsc-field">
+                  <label for="adminMenZones">ZONES (z)</label>
+                  <input type="number" id="adminMenZones" min="0" max="4" value="4" required />
+                </div>
+                <div class="admin-ifsc-field">
+                  <label for="adminMenAttTop">ATT. TOP</label>
+                  <input type="number" id="adminMenAttTop" min="0" max="40" value="6" required />
+                </div>
+                <div class="admin-ifsc-field">
+                  <label for="adminMenAttZone">ATT. ZONE</label>
+                  <input type="number" id="adminMenAttZone" min="0" max="40" value="5" required />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" id="calculateWinnersBtn" class="admin-action-btn">
+              ⚡ CALCULATE POINTS &amp; PICK WINNERS →
+            </button>
           </form>
         </div>
       </section>
@@ -288,6 +591,7 @@
           <span class="admin-row-tag">SUBMISSIONS FEED</span>
         </div>
         <div id="adminEntries" class="admin-entries"></div>
+        <button type="button" id="seedTestBtn" class="admin-seed-btn">🎲 SEED 100 TEST VOTERS</button>
       </section>
 
       <!-- Section 4: Danger Zone (Safeguarded & Collapsed at Bottom) -->
@@ -312,6 +616,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=2.7"></script>
+  <script src="app.js?v=3.2"></script>
 </body>
 </html>
