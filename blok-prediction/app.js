@@ -37,15 +37,20 @@ function readLocalState() {
     if (saved && Array.isArray(saved.entries)) {
       return {
         entries: saved.entries,
-        winner: saved.winner || '',
-        raffleWinner: saved.raffleWinner || '',
+        winner: sessionStorage.getItem('blok_test_winner') || '',
+        raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || '',
         predictionsOpen: saved.predictionsOpen !== false
       };
     }
   } catch (error) {
     console.warn('Could not read saved predictions.', error);
   }
-  return { entries: [], winner: '', raffleWinner: '', predictionsOpen: true };
+  return { 
+    entries: [], 
+    winner: sessionStorage.getItem('blok_test_winner') || '', 
+    raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || '', 
+    predictionsOpen: true 
+  };
 }
 
 const normalize = (value) => String(value || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -197,7 +202,7 @@ function getCrowdStats() {
 
 async function loadRemoteState() {
   const requests = [
-    database.from('event_settings').select('official_winner, raffle_winner, predictions_open').eq('id', 'main').maybeSingle(),
+    database.from('event_settings').select('*').eq('id', 'main').maybeSingle(),
     database.from('predictions').select('id, participant_name, climber_name, created_at').order('created_at', { ascending: true })
   ];
   if (isAdmin) requests.push(database.from('prediction_contacts').select('prediction_id, contact_type, contact_value'));
@@ -207,23 +212,23 @@ async function loadRemoteState() {
   const predictionsResponse = responses[1];
   const contactsResponse = responses[2];
 
-  if (settingsResponse.error || predictionsResponse.error || contactsResponse?.error) {
-    throw settingsResponse.error || predictionsResponse.error || contactsResponse.error;
+  if (settingsResponse.error || predictionsResponse.error) {
+    throw settingsResponse.error || predictionsResponse.error;
   }
 
-  const contactsByPrediction = new Map((contactsResponse?.data || []).map((item) => [item.prediction_id, item]));
+  const contactsByPrediction = new Map(((contactsResponse && !contactsResponse.error) ? contactsResponse.data || [] : []).map((item) => [item.prediction_id, item]));
   state = {
     entries: (predictionsResponse.data || []).map((item) => ({
       id: item.id,
       name: item.participant_name,
       climber: item.climber_name,
-      contactType: contactsByPrediction.get(item.id)?.contact_type,
-      contactValue: contactsByPrediction.get(item.id)?.contact_value,
+      contactType: contactsByPrediction.get(item.id)?.contact_type || 'name',
+      contactValue: contactsByPrediction.get(item.id)?.contact_value || item.participant_name,
       createdAt: item.created_at
     })),
-    winner: settingsResponse.data?.official_winner || '',
-    raffleWinner: settingsResponse.data?.raffle_winner || '',
-    predictionsOpen: settingsResponse.data?.predictions_open !== false
+    winner: sessionStorage.getItem('blok_test_winner') || '',
+    raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || '',
+    predictionsOpen: settingsResponse.data ? (settingsResponse.data.predictions_open !== false) : state.predictionsOpen
   };
 }
 
@@ -279,7 +284,6 @@ function renderPublicResults(winners) {
     html += `
       <div class="odds-box">
         <div class="odds-header">
-          <p class="odds-title">CROWD FAVORITES &amp; ODDS</p>
           <span class="odds-total">${crowd.total} total ${crowd.total === 1 ? 'prediction' : 'predictions'}</span>
         </div>
         ${crowd.list.map((item) => `
@@ -433,44 +437,23 @@ function setPanel(open) {
   document.body.style.overflow = open ? 'hidden' : '';
 }
 
-// ================= STEP 1: Details Form Submission =================
+// ================= STEP 1: Details Form Submission (Name-only test mode) =================
 if (detailsForm) {
   detailsForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const name = participantNameInput.value.trim();
-    const email = participantEmailInput.value.trim();
-    const phone = participantPhoneInput.value.trim();
 
     if (!name || name.length < 2) {
       participantNameInput.focus();
-      return showDetailsMessage('Please enter your full name.', true);
-    }
-
-    if (!isValidEmail(email)) {
-      participantEmailInput.focus();
-      return showDetailsMessage('Please enter a valid email address.', true);
-    }
-
-    if (!isValidPhone(phone)) {
-      participantPhoneInput.focus();
-      return showDetailsMessage('Please enter a valid phone number (at least 7 digits).', true);
+      return showDetailsMessage('Please enter your name.', true);
     }
 
     if (!state.predictionsOpen) {
       return showDetailsMessage('Predictions are now closed for the finals.', true);
     }
 
-    // Duplicate check: verify neither email nor phone was already used
-    const isDuplicate = state.entries.some((entry) => {
-      const cv = normalize(entry.contactValue || '');
-      return cv.includes(normalize(email)) || cv.includes(normalize(phone));
-    });
-
-    if (isDuplicate) {
-      return showDetailsMessage('This email or phone number has already submitted a prediction.', true);
-    }
-
-    pendingParticipant = { name, email, phone };
+    // No duplicate blocking - name only test mode!
+    pendingParticipant = { name, email: '', phone: '' };
     if (votingAsName) votingAsName.textContent = name;
     showDetailsMessage('');
     showSelectionMessage('');
@@ -501,7 +484,7 @@ if (confirmPredictionBtn) {
     showSelectionMessage('');
 
     const name = pendingParticipant.name;
-    const contactValue = `${pendingParticipant.email} · ${pendingParticipant.phone}`;
+    const contactValue = name;
 
     try {
       if (remoteEnabled) {
@@ -511,19 +494,7 @@ if (confirmPredictionBtn) {
         }).select('id').single();
 
         if (response.error) {
-          if (response.error.code === '23505') throw new Error('A prediction with this name already exists.');
           throw response.error;
-        }
-
-        const contactResponse = await database.from('prediction_contacts').insert({
-          prediction_id: response.data.id,
-          contact_type: 'email',
-          contact_value: contactValue
-        });
-
-        if (contactResponse.error) {
-          if (contactResponse.error.code === '23505') throw new Error('This contact has already submitted a prediction.');
-          throw contactResponse.error;
         }
 
         await refresh();
@@ -532,7 +503,7 @@ if (confirmPredictionBtn) {
           id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
           name,
           climber,
-          contactType: 'email',
+          contactType: 'name',
           contactValue,
           createdAt: new Date().toISOString()
         });
@@ -592,19 +563,219 @@ if (drawRaffleBtn) {
       drawRaffleBtn.disabled = false;
 
       // Persist raffle winner
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      render();
+
+      // Launch Dancing Cat Meme Celebration for 10 seconds!
+      launchCatParty(`🎉 RAFFLE DRAW WINNER: ${chosen.name}! 🎁`, `Correctly guessed champion: ${chosen.climber}! 🐱✨`);
+
       if (remoteEnabled) {
         try {
           await database.from('event_settings').update({ raffle_winner: chosen.name, updated_at: new Date().toISOString() }).eq('id', 'main');
-          await refresh();
         } catch (err) {
-          console.error(err);
+          console.warn('Could not persist raffle winner to remote:', err);
         }
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        render();
       }
     }, 1200);
   });
+}
+
+// ==========================================================================
+// Dancing Cat Memes Celebration (10 Seconds)
+// ==========================================================================
+let catPartyTimeout = null;
+let catPartyCountdownInterval = null;
+
+function playVictoryFanfare() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const notes = [
+      { f: 523.25, d: 0.12, t: 0.00 },
+      { f: 659.25, d: 0.12, t: 0.12 },
+      { f: 783.99, d: 0.12, t: 0.24 },
+      { f: 1046.50, d: 0.35, t: 0.36 }
+    ];
+
+    notes.forEach((n) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(n.f, ctx.currentTime + n.t);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime + n.t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + n.t + n.d);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + n.t);
+      osc.stop(ctx.currentTime + n.t + n.d);
+    });
+  } catch (err) {
+    // Audio optional, ignore if context restricted
+  }
+}
+
+function launchCatParty(title = 'OFFICIAL CHAMPION DECLARED!', subtitle = '10-second victory cat dance party activated! 🐱✨') {
+  // Clear any existing active celebration
+  if (catPartyTimeout) clearTimeout(catPartyTimeout);
+  if (catPartyCountdownInterval) clearInterval(catPartyCountdownInterval);
+  const existingOverlay = document.querySelector('#catPartyOverlay');
+  if (existingOverlay) existingOverlay.remove();
+
+  playVictoryFanfare();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'catPartyOverlay';
+  overlay.className = 'cat-party-overlay';
+
+  // 100% verified local dancing cat memes (no broken links or hotlinking limits)
+  const catMemes = [
+    {
+      url: 'assets/cats/pure_catjam.gif',
+      bubble: 'CATJAM VIBES! 🎵',
+      anim: 'anim-bounce',
+      hasFrame: false,
+      pos: { bottom: '3%', left: '3%' }
+    },
+    {
+      url: 'assets/cats/cat_comfy1.gif',
+      bubble: 'TOTAL GROOVE! 🕺',
+      anim: 'anim-groove',
+      hasFrame: false,
+      pos: { bottom: '3%', right: '3%' }
+    },
+    {
+      url: 'assets/cats/bongo_cat_cropped.gif',
+      bubble: 'BONGO BEATS! 🎹',
+      anim: 'anim-bounce',
+      hasFrame: true,
+      pos: { bottom: '4%', left: '50%', transform: 'translateX(-50%)' }
+    },
+    {
+      url: 'assets/cats/cat_comfy5.gif',
+      bubble: 'DISCO SALSA! 🌟',
+      anim: 'anim-spin-tilt',
+      hasFrame: false,
+      pos: { top: '15%', left: '3%' }
+    },
+    {
+      url: 'assets/cats/popcat_fast.gif',
+      bubble: 'POP POP POP! 🐱',
+      anim: 'anim-wiggle',
+      hasFrame: true,
+      pos: { top: '38%', left: '3%' }
+    },
+    {
+      url: 'assets/cats/cat_comfy2.gif',
+      bubble: 'KILLER MOVES! 💃',
+      anim: 'anim-jump',
+      hasFrame: false,
+      pos: { top: '38%', right: '3%' }
+    },
+    {
+      url: 'assets/cats/maxwell_spinning.gif',
+      bubble: 'MAXWELL SPIN! 🌀',
+      anim: 'anim-spin-tilt',
+      hasFrame: false,
+      pos: { top: '48%', left: '50%', transform: 'translate(-50%, -50%)' }
+    },
+    {
+      url: 'assets/cats/x1ah_cat.gif',
+      bubble: 'KITTEN CHOIR! 🎶',
+      anim: 'anim-groove',
+      hasFrame: true,
+      pos: { top: '15%', right: '3%' }
+    },
+    {
+      url: 'assets/cats/cat_comfy3.gif',
+      bubble: 'FELINE FLOW! 🔥',
+      anim: 'anim-bounce',
+      hasFrame: false,
+      pos: { bottom: '24%', left: '22%' }
+    },
+    {
+      url: 'assets/cats/cat_comfy4.gif',
+      bubble: 'SUPREME WIGGLE! 🚀',
+      anim: 'anim-jump',
+      hasFrame: false,
+      pos: { bottom: '24%', right: '22%' }
+    }
+  ];
+
+  // Falling confetti particles
+  const confettiChars = ['🎉', '🐾', '🐟', '✨', '⭐', '🐱', '🎈', '🏆', '🔥'];
+  let confettiHtml = '';
+  for (let i = 0; i < 28; i++) {
+    const char = confettiChars[i % confettiChars.length];
+    const left = Math.floor(Math.random() * 96) + 2;
+    const dur = (Math.random() * 2.5 + 2.5).toFixed(2);
+    const delay = (Math.random() * 3).toFixed(2);
+    confettiHtml += `<span class="cat-confetti-particle" style="left:${left}vw; animation-duration:${dur}s; animation-delay:${delay}s;">${char}</span>`;
+  }
+
+  // Generate Cats HTML
+  let catsHtml = '';
+  catMemes.forEach((cat) => {
+    let styleStr = '';
+    if (cat.pos.top) styleStr += `top:${cat.pos.top};`;
+    if (cat.pos.bottom) styleStr += `bottom:${cat.pos.bottom};`;
+    if (cat.pos.left) styleStr += `left:${cat.pos.left};`;
+    if (cat.pos.right) styleStr += `right:${cat.pos.right};`;
+    if (cat.pos.transform) styleStr += `transform:${cat.pos.transform};`;
+
+    catsHtml += `
+      <div class="cat-meme-item ${cat.anim} ${cat.hasFrame ? 'has-frame' : ''}" style="${styleStr}">
+        <div class="cat-bubble">${cat.bubble}</div>
+        <img class="cat-meme-img" src="${cat.url}" alt="Dancing Cat Meme" loading="eager" />
+      </div>
+    `;
+  });
+
+  overlay.innerHTML = `
+    ${confettiHtml}
+    <div class="cat-party-banner">
+      <h2 class="cat-party-title">${escapeHtml(title)}</h2>
+      <p class="cat-party-subtitle">${escapeHtml(subtitle)}</p>
+      <div class="cat-party-controls">
+        <span class="cat-party-timer-badge">⏱️ <span id="catPartyCountdown">10</span>s</span>
+        <button type="button" class="cat-party-dismiss-btn" id="dismissCatParty">✕ End celebration</button>
+      </div>
+    </div>
+    ${catsHtml}
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Countdown timer logic for exactly 10 seconds
+  let remainingSeconds = 10;
+  const countdownEl = overlay.querySelector('#catPartyCountdown');
+
+  catPartyCountdownInterval = setInterval(() => {
+    remainingSeconds -= 1;
+    if (countdownEl) {
+      countdownEl.textContent = String(Math.max(0, remainingSeconds));
+    }
+  }, 1000);
+
+  function closeParty() {
+    if (catPartyCountdownInterval) clearInterval(catPartyCountdownInterval);
+    if (catPartyTimeout) clearTimeout(catPartyTimeout);
+    overlay.classList.add('fade-out');
+    setTimeout(() => {
+      if (overlay.parentNode) overlay.remove();
+    }, 450);
+  }
+
+  // Dismiss button click
+  const dismissBtn = overlay.querySelector('#dismissCatParty');
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', closeParty);
+  }
+
+  // Auto dismiss after 10000ms (exactly 10 seconds)
+  catPartyTimeout = setTimeout(closeParty, 10000);
 }
 
 // Navigation & View Switches
@@ -697,8 +868,16 @@ document.querySelector('#winnerForm').addEventListener('submit', async (event) =
   // 1. Instantly update state & re-render UI
   state.winner = winner;
   state.predictionsOpen = false;
+  sessionStorage.setItem('blok_test_winner', winner);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
+
+  // Close admin panel & display podium results view
+  setPanel(false);
+  showView('results');
+
+  // Launch Dancing Cat Meme Celebration for exactly 10 seconds!
+  launchCatParty(`🎉 WE HAVE A CHAMPION: ${winner}! 🏆`, '10-second victory cat dance party activated! 🐱✨');
 
   // 2. Sync to Supabase in background
   if (remoteEnabled) {
@@ -724,15 +903,18 @@ document.querySelector('#winnerForm').addEventListener('submit', async (event) =
 // Reset Event Data (Secured with typed confirmation)
 document.querySelector('#clearData').addEventListener('click', async () => {
   const confirmation = window.prompt(
-    '⚠️ ATENCIÓN: Esta acción eliminará permanentemente todas las predicciones registradas y reiniciará el campeón oficial.\n\nPara confirmar, escribe RESET en mayúsculas:'
+    '⚠️ WARNING: This will permanently delete all registered predictions and reset the official champion.\n\nTo confirm, type RESET in capital letters:'
   );
 
   if (confirmation !== 'RESET') {
     if (confirmation !== null) {
-      window.alert('Acción cancelada. Para reiniciar los datos debes escribir exactamente RESET.');
+      window.alert('Action cancelled. To reset all event data you must type RESET exactly.');
     }
     return;
   }
+
+  sessionStorage.removeItem('blok_test_winner');
+  sessionStorage.removeItem('blok_test_raffle_winner');
 
   try {
     if (remoteEnabled) {

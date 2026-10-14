@@ -215,8 +215,8 @@ button, input { font: inherit; }
 
 /* Redesigned Urban Secondary Action (Zero Slashes) */
 .secondary-action, .text-action {
-  width: 100%; min-height: 48px; border: 1.5px solid var(--chalk); border-radius: 0;
-  background: rgba(14, 6, 12, 0.85); color: var(--chalk);
+  width: 100%; min-height: 48px; border: 2px solid #ffffff; border-radius: 0;
+  background: rgba(10, 3, 9, 0.9); color: #ffffff;
   font: 800 13px/1 var(--font-heading); letter-spacing: .08em; text-transform: uppercase;
   cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
   text-decoration: none; box-shadow: 3px 3px 0 var(--mauve);
@@ -309,19 +309,20 @@ button, input { font: inherit; }
   gap: 8px;
 }
 .voting-as-chip {
-  font: 700 10px var(--font-mono);
-  color: var(--chalk-muted);
+  font: 700 10.5px var(--font-mono);
+  color: #ffffff;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(14, 6, 12, 0.85);
-  padding: 2px 8px;
-  border: 1px solid var(--line-solid);
+  background: rgba(14, 6, 12, 0.9);
+  padding: 3px 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
 }
 .voting-as-chip b {
-  color: var(--mauve-bright);
+  color: var(--tape-yellow);
   font-family: var(--font-body);
-  font-size: 11.5px;
+  font-size: 12px;
+  font-weight: 700;
   max-width: 140px;
   white-space: nowrap;
   overflow: hidden;
@@ -474,13 +475,14 @@ button, input { font: inherit; }
   transform: rotate(-2deg); margin-bottom: 12px; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.8);
 }
 .success-lead {
-  font: 500 14px/1.55 var(--font-body); color: var(--chalk-dim); margin: 8px 0 20px;
+  font: 500 15px/1.55 var(--font-body); color: #ffffff; margin: 8px 0 20px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
 }
 
 /* Authentic Brutalist Receipt Card */
 .receipt-card {
-  border: 2px solid var(--chalk); border-radius: 0; padding: 20px;
-  background: rgba(14, 6, 12, 0.92); box-shadow: 6px 6px 0 var(--mauve);
+  border: 2px solid #ffffff; border-radius: 0; padding: 20px;
+  background: rgba(10, 3, 9, 0.96); box-shadow: 6px 6px 0 var(--mauve);
   display: flex; flex-direction: column; gap: 16px; position: relative;
 }
 .receipt-tape-strip {
@@ -489,18 +491,23 @@ button, input { font: inherit; }
 }
 .receipt-row { display: flex; flex-direction: column; gap: 4px; }
 .receipt-label {
-  font: 700 10.5px var(--font-mono); letter-spacing: .1em; color: var(--mauve); text-transform: uppercase;
+  font: 700 11px var(--font-mono); letter-spacing: .12em; color: var(--tape-yellow); text-transform: uppercase;
 }
 .receipt-value {
-  font: 400 26px/1.1 var(--font-poster); color: var(--chalk); letter-spacing: .03em;
+  font: 400 30px/1.1 var(--font-poster); color: #ffffff; letter-spacing: .03em;
 }
-.receipt-value.highlight-accent { color: var(--mauve-bright); font-size: 30px; }
+.receipt-value.highlight-accent {
+  color: #ffffff; font-size: 32px;
+  text-shadow: 0 0 10px rgba(224, 122, 158, 0.6);
+}
 .receipt-footer {
-  border-top: 2px dashed var(--line-raw); padding-top: 12px;
-  font: 700 9.5px var(--font-mono); letter-spacing: .1em; color: var(--chalk-muted);
+  border-top: 2px dashed rgba(255, 255, 255, 0.25); padding-top: 12px;
+  font: 700 10.5px var(--font-mono); letter-spacing: .12em; color: #ffffff;
 }
 .good-luck-note {
-  font: 400 13px/1.55 var(--font-body); color: var(--chalk-muted); margin-top: 22px; text-align: center;
+  font: 500 13.5px/1.55 var(--font-body); color: #ffffff; margin-top: 20px; text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+  background: rgba(14, 6, 12, 0.82); padding: 10px 14px; border: 1.5px solid var(--line-solid);
 }
 
 /* ---------- Results Scoreboard ---------- */
@@ -781,4 +788,275 @@ button, input { font: inherit; }
 /* Responsive adjustments */
 @media (min-width: 441px) {
   .app-frame { min-height: 844px; max-height: 94dvh; border-radius: 0; border: 2px solid var(--chalk); }
+}
+
+/* ==========================================================================
+   DANCING CAT MEME PARTY CELEBRATION (10 SECONDS)
+   ========================================================================== */
+.cat-party-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 999999;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: rgba(10, 3, 14, 0.88);
+  animation: discoStrobe 1.8s infinite alternate ease-in-out;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+.cat-party-overlay.fade-out {
+  opacity: 0;
+  visibility: hidden;
+}
+
+@keyframes discoStrobe {
+  0% {
+    background-color: rgba(18, 4, 25, 0.88);
+    box-shadow: inset 0 0 100px rgba(255, 0, 128, 0.4);
+  }
+  33% {
+    background-color: rgba(8, 16, 28, 0.88);
+    box-shadow: inset 0 0 100px rgba(0, 230, 255, 0.4);
+  }
+  66% {
+    background-color: rgba(28, 20, 6, 0.88);
+    box-shadow: inset 0 0 100px rgba(255, 230, 0, 0.45);
+  }
+  100% {
+    background-color: rgba(22, 6, 22, 0.88);
+    box-shadow: inset 0 0 100px rgba(200, 50, 255, 0.45);
+  }
+}
+
+/* Floating Confetti & Paw Particles */
+.cat-confetti-particle {
+  position: absolute;
+  top: -40px;
+  user-select: none;
+  pointer-events: none;
+  font-size: 26px;
+  animation: confettiFall linear forwards;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(720deg) scale(1.2);
+    opacity: 0.9;
+  }
+}
+
+/* Top Celebration Banner */
+.cat-party-banner {
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
+  margin-top: clamp(12px, 3vh, 32px);
+  padding: 14px 22px;
+  background: #0d0612;
+  border: 3px solid #ff007f;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 0, 127, 0.6), inset 0 0 15px rgba(255, 230, 0, 0.2);
+  text-align: center;
+  border-radius: 12px;
+  max-width: 90vw;
+  animation: bannerPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes bannerPop {
+  0% { transform: scale(0.4) translateY(-30px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.cat-party-title {
+  font-family: var(--font-display, 'Arial Black', Impact, sans-serif);
+  font-size: clamp(20px, 4.5vw, 34px);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fffb00;
+  text-shadow: 2px 2px 0 #ff007f, 4px 4px 0 #000, 0 0 15px rgba(255, 251, 0, 0.8);
+  margin: 0 0 4px;
+  line-height: 1.1;
+}
+
+.cat-party-subtitle {
+  font-family: var(--font-mono, monospace);
+  font-size: clamp(12px, 2.4vw, 15px);
+  color: #00fff2;
+  text-shadow: 1px 1px 0 #000, 0 0 10px rgba(0, 255, 242, 0.7);
+  font-weight: 700;
+  margin: 0 0 10px;
+  letter-spacing: 0.04em;
+}
+
+.cat-party-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cat-party-timer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ff007f;
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.06em;
+  box-shadow: 0 2px 8px rgba(255, 0, 127, 0.5);
+}
+
+.cat-party-dismiss-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cat-party-dismiss-btn:hover {
+  background: #ffffff;
+  color: #000;
+}
+
+/* Dancing Cat Items */
+.cat-meme-item {
+  position: absolute;
+  pointer-events: auto;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.85));
+  transition: transform 0.2s ease;
+}
+
+.cat-meme-item:hover {
+  transform: scale(1.15) !important;
+}
+
+.cat-meme-img {
+  width: clamp(100px, 18vw, 175px);
+  height: clamp(100px, 18vw, 175px);
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.9));
+  transition: transform 0.2s ease;
+}
+
+.cat-meme-item.has-frame .cat-meme-img {
+  border-radius: 16px;
+  border: 3.5px solid #ffffff;
+  background: #ffffff;
+  object-fit: cover;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+}
+
+/* Cute speech bubbles above cats */
+.cat-bubble {
+  position: relative;
+  background: #ffff00;
+  color: #0a0309;
+  font-family: var(--font-display, Impact, sans-serif);
+  font-weight: 900;
+  font-size: clamp(11px, 2vw, 14px);
+  padding: 4px 10px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border: 2px solid #000;
+  box-shadow: 2px 3px 0 #000;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.cat-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0;
+  border-style: solid;
+  border-color: #000 transparent;
+  display: block;
+  width: 0;
+}
+
+/* Animations for each cat */
+.anim-bounce {
+  animation: catBounce 0.8s infinite alternate ease-in-out;
+}
+
+.anim-wiggle {
+  animation: catWiggle 0.6s infinite alternate ease-in-out;
+}
+
+.anim-jump {
+  animation: catJump 0.9s infinite cubic-bezier(0.28, 0.84, 0.42, 1);
+}
+
+.anim-spin-tilt {
+  animation: catSpinTilt 1.1s infinite alternate ease-in-out;
+}
+
+.anim-groove {
+  animation: catGroove 0.7s infinite alternate ease-in-out;
+}
+
+@keyframes catBounce {
+  0% { transform: translateY(0) scale(0.98); }
+  100% { transform: translateY(-24px) scale(1.08); }
+}
+
+@keyframes catWiggle {
+  0% { transform: rotate(-12deg) scale(1); }
+  100% { transform: rotate(12deg) scale(1.06); }
+}
+
+@keyframes catJump {
+  0% { transform: translateY(0) scaleY(0.9) scaleX(1.1); }
+  45% { transform: translateY(-35px) scaleY(1.1) scaleX(0.95); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+
+@keyframes catSpinTilt {
+  0% { transform: rotate(-8deg) translateY(-8px); }
+  100% { transform: rotate(8deg) translateY(12px); }
+}
+
+@keyframes catGroove {
+  0% { transform: skewX(-6deg) scale(1); }
+  100% { transform: skewX(6deg) scale(1.05); }
+}
+
+/* Mobile Cat Adjustments */
+@media (max-width: 480px) {
+  .cat-meme-img {
+    width: clamp(78px, 24vw, 115px);
+    height: clamp(78px, 24vw, 115px);
+    border-width: 2.5px;
+  }
+  .cat-bubble {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
 }

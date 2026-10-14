@@ -35,6 +35,9 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
    - Clean, modular 4-card structure: Competition Status, Podium Lucky Draw Tool, Live Submissions & Stats Overview, and a secured collapsible Danger Zone.
    - **Instant Optimistic Toggling:** The predictions toggle button (`#toggleOpen`) updates the UI instantly (turning the status badge and button red for closed, yellow for open) with zero latency, and syncs to Supabase in the background. Gating `!isAdmin` check and blocking `window.confirm` dialogs removed.
    - **Safe Data Reset:** `#clearData` relocated to the very bottom inside a closed `<details class="admin-danger-zone">`, protected by a typed prompt requiring `"RESET"` in uppercase to prevent accidental data wipes.
+8. **Test Mode (Name-Only & 100 Seeded Voters):**
+   - **Name-Only Voting:** Form simplified to ask only for Full Name (email and phone hidden/optional). No duplicate blocking — users can submit multiple votes for testing without restrictions.
+   - **100 Seeded Predictions:** Database populated with 100 realistic community votes distributed across the 10 finalists (Janja ~25%, Toby ~18%, Hannes ~17%, Sorato ~12%, Oriane ~9%, etc.), ready for testing the winner publication, crowd odds scoreboard, and lucky draw raffle.
 
 ## How to Test Locally
 

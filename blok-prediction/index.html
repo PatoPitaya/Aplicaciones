@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=2.1" />
-  <link rel="stylesheet" href="contact.css?v=2.1" />
+  <link rel="stylesheet" href="styles.css?v=2.7" />
+  <link rel="stylesheet" href="contact.css?v=2.7" />
 </head>
 <body>
   <div class="ambient-glow" aria-hidden="true"></div>
@@ -22,8 +22,6 @@
       <section class="app-view is-active welcome-view" data-view="welcome" aria-labelledby="welcomeTitle">
         <header class="app-header">
           <a class="logo" href="#home" aria-label="BLOK home">
-            <span class="logo-mark">BLOK</span>
-            <span class="logo-sub">XXL</span>
           </a>
           <button class="header-link" id="adminToggle" aria-expanded="false" aria-controls="adminPanel">
             ORG. <span>↗</span>
@@ -33,9 +31,9 @@
         <div class="welcome-content">
           <p class="micro-label">BLOK OPEN XXL</p>
 
-          <h1 id="welcomeTitle">WHO WINS<br />THE <span class="title-accent">FINAL?</span></h1>
+          <h1 id="welcomeTitle">WHO WILL WIN<br /><span class="title-accent">tonight's FINALs?</span></h1>
 
-          <p class="welcome-lead">Guess tonight's finals winner. If your pick takes 1st place, enter the spectator.</p>
+          <p class="welcome-lead"></p>
 
           <div class="deadline-pill" id="deadlineNote">
             <span class="status-dot"></span>
@@ -45,11 +43,11 @@
 
         <div class="bottom-actions">
           <button class="primary-action" data-view-target="register">
-            <span>ENTER THE PREDICTION</span>
+            <span>PLACE YOUR BETS</span>
             <b aria-hidden="true">→</b>
           </button>
           <button class="secondary-action" data-view-target="results">
-            <span>LIVE ODDS &amp; RESULTS</span>
+            <span>LIVE FAN FAVORITES</span>
             <span class="action-arrow">↗</span>
           </button>
         </div>
@@ -61,36 +59,29 @@
           <button class="back-button" data-view-target="welcome" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK XXL</a>
+          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
         </header>
 
         <div class="view-content">
-          <p class="micro-label">STEP 1 OF 2 · YOUR DETAILS</p>
-          <h2 id="registerTitle">YOUR <span>DETAILS</span></h2>
-          <p class="view-helper">Enter your contact details. If your predicted athlete wins tonight, you enter the spectator prize raffle.</p>
-
+          <p class="micro-label">STEP 1 OF 2 · YOUR NAME</p>
+          <h2 id="registerTitle">YOUR <span>NAME</span></h2>
           <form id="detailsForm" class="prediction-form">
             <div class="form-group">
-              <label for="participantName">YOUR FULL NAME</label>
-              <input id="participantName" name="name" autocomplete="name" placeholder="First and last name" maxlength="80" required />
+              <label for="participantName">YOUR first and last NAME</label>
+              <input id="participantName" name="name" autocomplete="name" placeholder="Enter your name" maxlength="80" required />
             </div>
 
-            <div class="form-group">
-              <label for="participantEmail">YOUR EMAIL</label>
-              <input id="participantEmail" name="email" type="email" autocomplete="email" inputmode="email" placeholder="name@domain.com" maxlength="100" required />
-            </div>
-
-            <div class="form-group">
-              <label for="participantPhone">YOUR PHONE NUMBER</label>
-              <input id="participantPhone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+32 470 00 00 00" maxlength="30" required />
-              <p class="privacy-note">Used strictly by organizers to contact raffle winners. Zero spam.</p>
+            <!-- Email & Phone hidden for test mode with name only -->
+            <div style="display: none;" aria-hidden="true">
+              <input id="participantEmail" name="email" type="email" />
+              <input id="participantPhone" name="phone" type="tel" />
             </div>
 
             <div id="detailsMessage" class="form-message" role="status" aria-live="polite"></div>
 
             <div class="bottom-actions">
               <button class="primary-action" type="submit">
-                <span>PREDICT THE WINNER</span>
+                <span>NEXT</span>
                 <b aria-hidden="true">→</b>
               </button>
             </div>
@@ -104,7 +95,7 @@
           <button class="back-button" data-view-target="register" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK XXL</a>
+          <a class="logo logo-small" href="#home">BLOK open XXL</a>
         </header>
 
         <div class="view-content">
@@ -149,7 +140,7 @@
       <!-- ================= SUCCESS VIEW ================= -->
       <section class="app-view success-view" data-view="success" aria-labelledby="successTitle">
         <header class="app-header">
-          <a class="logo logo-small" href="#home">BLOK XXL</a>
+          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
         </header>
 
         <div class="success-content">
@@ -197,12 +188,11 @@
           <button class="back-button" data-view-target="welcome" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK XXL</a>
+          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
         </header>
 
         <div class="view-content">
-          <p class="micro-label">02 · LEADERBOARD &amp; ODDS</p>
-          <h2 id="resultsTitle">FINALS &amp;<br /><span class="title-accent">CROWD ODDS</span></h2>
+          <h2 id="resultsTitle">FAN<br /><span class="title-accent">FAVORITES</span></h2>
           <div id="resultsContent" class="results-content"></div>
         </div>
       </section>
@@ -322,6 +312,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=2.1"></script>
+  <script src="app.js?v=2.7"></script>
 </body>
 </html>
