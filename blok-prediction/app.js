@@ -878,6 +878,46 @@ function renderPublicResults() {
           `).join('')}
         </div>
       `;
+
+      if (state.entries.length > 0) {
+        html += `
+          <div class="leaderboard-wrap" style="margin-top: 24px;">
+            <div class="leaderboard-header">
+              <span class="leaderboard-title">COMMUNITY PREDICTIONS</span>
+              <span class="leaderboard-count">${state.entries.length} ENTRIES</span>
+            </div>
+            <div class="leaderboard-list">
+              ${state.entries.map((entry, index) => {
+                const pred = parsePrediction(entry.climber);
+                const isComplete = Boolean(pred?.women?.climber && pred?.men?.climber);
+                return `
+                  <div class="lb-entry ${!isComplete ? 'is-incomplete' : ''}">
+                    <span class="lb-rank">#${index + 1}</span>
+                    <div class="lb-info">
+                      <b class="lb-name">${escapeHtml(entry.name)}${!isComplete ? ' <i class="lb-flag">INCOMPLETE</i>' : ''}</b>
+                      <div class="lb-picks">
+                        <div class="lb-pick-row lb-pick-women">
+                          <span class="lb-pick-tag">W:</span>
+                          <span class="lb-pick-climber">${escapeHtml(pred?.women?.climber || '—')}</span>
+                          <span class="lb-pick-score">${escapeHtml(pred?.women?.scoreStr || '—')}</span>
+                        </div>
+                        <div class="lb-pick-row lb-pick-men">
+                          <span class="lb-pick-tag">M:</span>
+                          <span class="lb-pick-climber">${escapeHtml(pred?.men?.climber || '—')}</span>
+                          <span class="lb-pick-score">${escapeHtml(pred?.men?.scoreStr || '—')}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="lb-score-col">
+                      <span class="lb-status-locked">LOCKED</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
     } else {
       html += '<p class="empty-results">No predictions submitted yet. Be the first to vote!</p>';
     }

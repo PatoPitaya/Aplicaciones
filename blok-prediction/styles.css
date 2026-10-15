@@ -83,7 +83,9 @@ button, input { font: inherit; }
 }
 .app-frame {
   position: relative; width: min(100%, 440px); min-height: 100dvh; overflow-y: auto; overflow-x: hidden;
-  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: auto;
   background: var(--bg-frame); box-shadow: 0 25px 80px rgba(0, 0, 0, 0.9); border: 1.5px solid var(--line-raw);
 }
 .app-view {
@@ -2108,8 +2110,6 @@ button, input { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 520px;
-  overflow-y: auto;
 }
 
 .lb-entry {
@@ -2234,4 +2234,20 @@ button, input { font: inherit; }
   font: 700 16px/1 var(--font-mono);
   color: var(--tape-yellow);
   white-space: nowrap;
+}
+
+.lb-status-locked {
+  display: inline-block;
+  font: 700 9.5px var(--font-mono);
+  color: var(--tape-yellow-soft);
+  background: rgba(245, 215, 82, 0.08);
+  border: 1px solid rgba(245, 215, 82, 0.35);
+  padding: 3px 6px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.results-view {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
 }

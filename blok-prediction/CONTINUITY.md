@@ -103,6 +103,7 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
          - **Women (`.lb-pick-women`):** The `W:` tag and the predicted score (`4T4 4Z4`) are rendered in distinct **Tape Yellow** (`var(--tape-yellow)`).
          - **Men (`.lb-pick-men`):** The `M:` tag and the predicted score (`4T4 4Z5`) are rendered in distinct **Mauve / Pink** (`var(--mauve-bright)`).
          - Neither score gets cut off or truncated on mobile screens, with total points prominently displayed on the right.
+      4. **Community Predictions in Fan Favorites View:** When official results are not yet declared (`FAN FAVORITES` view), the crowd odds progress bars for Women and Men are followed by the complete community predictions leaderboard (`COMMUNITY PREDICTIONS`). Participants can scroll down smoothly to see all bets (`W:` and `M:` picks/scores with `[ LOCKED ]` badge). Fixed nested scroll trap by removing restrictive inner `max-height: 520px` from `.leaderboard-list` and enabling hardware-accelerated touch momentum scrolling on `.app-frame`.
 
 ## How to Test Locally
 
