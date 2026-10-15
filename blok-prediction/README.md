@@ -1,15 +1,16 @@
-# BLOK OPEN XXL — Competition Predictions & Raffle App
+# BLOK OPEN XXL — Competition Predictions & Scoring App
 
-A sleek, mobile-first web app for attendees at **Klimzaal Blok** (Hoboken, Antwerp) to predict the finals champion of **BLOK OPEN XXL** (presented by **K2 × TENAYA**), track live crowd odds, and enter the official prize raffle (exclusive merch & goodies).
+A sleek, mobile-first web app for attendees at **Klimzaal Blok** (Hoboken, Antwerp) to predict the boulder finals champions of **BLOK OPEN XXL** (presented by **K2 × TENAYA**), guess exact IFSC final scores (Tops, Zones, Attempts), track live crowd odds, and compete on the spectator leaderboard.
 
 ---
 
 ## What's Included
 
 - **Official Event Branding:** Matches the official competition flyer (hoodie wine palette, chalk white, dusty mauve accents, finals at 20:30).
+- **Dual Category IFSC Prediction Flow:** Sequential wizard (Women's Finalist → Women's IFSC Scorecard → Men's Finalist → Men's IFSC Scorecard).
 - **Live Crowd Odds:** Real-time breakdown of attendee predictions per climber with percentage bars.
-- **Admin Lucky Draw Raffle:** Instant randomized drawing from all participants who correctly guessed the champion, with contact information for the speaker/podium ceremony.
-- **Contact-based Duplicate Prevention:** Allows participants with common names to enter while preventing multiple entries using the same email or phone.
+- **Dual IFSC Scoring Engine:** Instant point calculation (+50 winner, +20 tops closeness, +15 zones closeness, +15 top att closeness, +10 zone att closeness, +25 full exact bonus, max 270 pts) with comprehensive tiebreakers.
+- **Organizer Console:** Fast prediction locking, official finals score entry with live previews, test voter seeding, and safe data management.
 - **Dual Mode (Local & Supabase):** Works out-of-the-box locally in `localStorage`, and connects seamlessly to Supabase for real-time mobile sync.
 
 ---
@@ -43,10 +44,10 @@ A sleek, mobile-first web app for attendees at **Klimzaal Blok** (Hoboken, Antwe
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | Semantic markup, views (Welcome, Prediction, Success, Results), and Admin drawer. |
-| `styles.css` | Blok Open XXL design system (hoodie wine `#200f19`, chalk white, dusty mauve `#c49ba7`, gold). |
+| `index.html` | Semantic markup, sequential views (Welcome, Registration, Women/Men picks and IFSC scorecards, Success receipt, Results leaderboard), and Admin drawer. |
+| `styles.css` | Blok Open XXL design system (hoodie wine `#200f19`, chalk white, dusty mauve `#c49ba7`, soft tape stickers). |
 | `contact.css` | Radio pills and contact field styling. |
-| `app.js` | App state, prediction submission, crowd odds calculation, lucky draw raffle, and Supabase realtime. |
+| `app.js` | App state, sequential wizard, IFSC validation, crowd odds calculation, dual scoring engine, and Supabase realtime. |
 | `flyer.jpg` | Official flyer asset featuring the competition credentials. |
 | `supabase-schema.sql` | Database schema, policies (RLS), and uniqueness constraints. |
 | `supabase-config.js` | Supabase credentials (`url` and `anonKey`). |

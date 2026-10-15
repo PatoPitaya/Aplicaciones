@@ -1,4 +1,4 @@
-"""Servidor local para previsualizar La Apuesta.
+"""Servidor local para previsualizar BLOK OPEN XXL.
 
 Uso:
     py app.py
@@ -86,14 +86,14 @@ class AppHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Servidor local de La Apuesta.")
+    parser = argparse.ArgumentParser(description="Servidor local de BLOK OPEN XXL.")
     # En Render (Web Service) la variable PORT la define la plataforma y el host debe ser 0.0.0.0.
     parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"), help="Dirección donde escuchar.")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")), help="Puerto local.")
     options = parser.parse_args()
 
     server = ThreadingHTTPServer((options.host, options.port), AppHandler)
-    print(f"La Apuesta disponible en http://{options.host}:{options.port}")
+    print(f"BLOK OPEN XXL disponible en http://{options.host}:{options.port}")
     print(f"API en http://{options.host}:{options.port}/health")
     try:
         server.serve_forever()

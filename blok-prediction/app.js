@@ -26,19 +26,16 @@ const adminControls = document.querySelector('#adminControls');
 const adminWarning = document.querySelector('#adminWarning');
 const adminAuthMessage = document.querySelector('#adminAuthMessage');
 const appFrame = document.querySelector('#appFrame');
-const drawRaffleBtn = document.querySelector('#drawRaffleBtn');
-const raffleResultBox = document.querySelector('#raffleResultBox');
 const seedTestBtn = document.querySelector('#seedTestBtn');
 
 let isAdmin = true;
 let state = readLocalState();
-let raffleInterval = null;
 let pendingParticipant = null;
 
 // Draft prediction state for the sequential flow (WOMEN FIRST!)
 let draftPick = {
-  women: { climber: '', tops: 4, zones: 4, att_top: 4, att_zone: 4, scoreStr: '4T4z 4 4' },
-  men: { climber: '', tops: 3, zones: 4, att_top: 6, att_zone: 5, scoreStr: '3T4z 6 5' }
+  women: { climber: '', tops: 4, zones: 4, att_top: 4, att_zone: 4, scoreStr: '4T4 4Z4' },
+  men: { climber: '', tops: 3, zones: 4, att_top: 6, att_zone: 5, scoreStr: '3T6 4Z5' }
 };
 
 // Official Finals Roster (WOMEN FIRST, then MEN)
@@ -59,14 +56,44 @@ const FINALISTS = {
   ]
 };
 
+function isValidWinnerString(raw) {
+  if (!raw || typeof raw !== 'string') return false;
+  const s = raw.trim();
+  if (s.startsWith('W:') && s.includes('|M:')) {
+    const parts = s.split('|');
+    const wPart = (parts[0] || '').replace(/^W:/, '').trim();
+    const mPart = (parts[1] || '').replace(/^M:/, '').trim();
+    const wMatch = wPart.match(/^(.*?)(?:\s+\d+T)/i);
+    const mMatch = mPart.match(/^(.*?)(?:\s+\d+T)/i);
+    const wName = wMatch ? wMatch[1].trim() : '';
+    const mName = mMatch ? mMatch[1].trim() : '';
+    return Boolean(wName || mName);
+  }
+  if (s.startsWith('{')) {
+    try {
+      const obj = JSON.parse(s);
+      return Boolean(obj?.women?.climber || obj?.men?.climber);
+    } catch (e) {
+      return false;
+    }
+  }
+  return s.length > 2;
+}
+
 function readLocalState() {
+  const sessionRaw = sessionStorage.getItem('blok_test_winner');
+  const validSessionWinner = isValidWinnerString(sessionRaw) ? sessionRaw : '';
+  if (sessionRaw && !validSessionWinner) {
+    sessionStorage.removeItem('blok_test_winner');
+  }
+
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved && Array.isArray(saved.entries)) {
+      const validSavedWinner = isValidWinnerString(saved.winner) ? saved.winner : '';
       return {
         entries: saved.entries,
-        winner: sessionStorage.getItem('blok_test_winner') || saved.winner || '',
-        raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || saved.raffleWinner || '',
+        winner: validSessionWinner || validSavedWinner || '',
         predictionsOpen: saved.predictionsOpen !== false
       };
     }
@@ -75,8 +102,7 @@ function readLocalState() {
   }
   return { 
     entries: [], 
-    winner: sessionStorage.getItem('blok_test_winner') || '', 
-    raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || '', 
+    winner: validSessionWinner || '', 
     predictionsOpen: true 
   };
 }
@@ -116,7 +142,8 @@ function sanitizeIfsc(score) {
     attZone = zones;
   }
 
-  const scoreStr = `${tops}T${zones}z ${attTop} ${attZone}`;
+  // Format: e.g. 3T4 4Z4 or 3T6 4Z5
+  const scoreStr = `${tops}T${attTop} ${zones}Z${attZone}`;
   return {
     climber: s.climber || '',
     tops,
@@ -127,16 +154,28 @@ function sanitizeIfsc(score) {
   };
 }
 
-// Parses an IFSC score string like "4T4z 4 4" or "3T4z 6 5"
+// Parses score string like "3T4 4Z4", "3T6 4Z5", or legacy "3T4z 6 5"
 function parseIfscStr(scoreStr, defaultTops = 4, defaultZones = 4, defaultAttTop = 4, defaultAttZone = 4) {
   if (scoreStr) {
-    const m = String(scoreStr).trim().match(/^(\d+)T(\d+)z\s+(\d+)\s+(\d+)$/i);
-    if (m) {
+    const str = String(scoreStr).trim();
+    // 1. New format: e.g. "3T4 4Z4" (m[1]=tops, m[2]=att_top, m[3]=zones, m[4]=att_zone)
+    const mNew = str.match(/^(\d+)T(\d+)\s+(\d+)Z(\d+)$/i);
+    if (mNew) {
       return sanitizeIfsc({
-        tops: parseInt(m[1], 10),
-        zones: parseInt(m[2], 10),
-        att_top: parseInt(m[3], 10),
-        att_zone: parseInt(m[4], 10)
+        tops: parseInt(mNew[1], 10),
+        att_top: parseInt(mNew[2], 10),
+        zones: parseInt(mNew[3], 10),
+        att_zone: parseInt(mNew[4], 10)
+      });
+    }
+    // 2. Legacy IFSC format: e.g. "3T4z 6 5" (m[1]=tops, m[2]=zones, m[3]=att_top, m[4]=att_zone)
+    const mOld = str.match(/^(\d+)T(\d+)z\s+(\d+)\s+(\d+)$/i);
+    if (mOld) {
+      return sanitizeIfsc({
+        tops: parseInt(mOld[1], 10),
+        zones: parseInt(mOld[2], 10),
+        att_top: parseInt(mOld[3], 10),
+        att_zone: parseInt(mOld[4], 10)
       });
     }
   }
@@ -179,19 +218,19 @@ function parsePrediction(rawClimber) {
       const p = part.trim();
       if (p.startsWith('W:')) {
         const val = p.slice(2).trim();
-        const match = val.match(/^(.*?)(?:\s+(\d+T\d+z\s+\d+\s+\d+))?$/i);
+        const match = val.match(/^(.*?)(?:\s+(\d+T\d+\s+\d+Z\d+|\d+T\d+z\s+\d+\s+\d+))?$/i);
         if (match) {
           const climber = (match[1] || '').trim();
           const scoreParsed = parseIfscStr(match[2], 4, 4, 4, 4);
-          women = sanitizeIfsc({ climber, ...scoreParsed });
+          women = sanitizeIfsc({ ...scoreParsed, climber });
         }
       } else if (p.startsWith('M:')) {
         const val = p.slice(2).trim();
-        const match = val.match(/^(.*?)(?:\s+(\d+T\d+z\s+\d+\s+\d+))?$/i);
+        const match = val.match(/^(.*?)(?:\s+(\d+T\d+\s+\d+Z\d+|\d+T\d+z\s+\d+\s+\d+))?$/i);
         if (match) {
           const climber = (match[1] || '').trim();
           const scoreParsed = parseIfscStr(match[2], 3, 4, 6, 5);
-          men = sanitizeIfsc({ climber, ...scoreParsed });
+          men = sanitizeIfsc({ ...scoreParsed, climber });
         }
       }
     }
@@ -283,9 +322,11 @@ function calculateCategoryScore(prediction, real) {
 
 function scoreParticipant(entry, officialWinner) {
   const pred = parsePrediction(entry.climber);
+  const hasBothPicks = Boolean(pred?.women?.climber && pred?.men?.climber);
   const womenScore = calculateCategoryScore(pred?.women, officialWinner?.women);
   const menScore = calculateCategoryScore(pred?.men, officialWinner?.men);
 
+  const championMatches = (womenScore.winnerMatch ? 1 : 0) + (menScore.winnerMatch ? 1 : 0);
   const totalPoints = womenScore.total + menScore.total;
   const totalAttemptsDiff = womenScore.attDiff + menScore.attDiff;
   const totalScoreDiff = womenScore.scoreDiff + menScore.scoreDiff;
@@ -293,6 +334,8 @@ function scoreParticipant(entry, officialWinner) {
   return {
     entry,
     pred,
+    hasBothPicks,
+    championMatches,
     womenScore,
     menScore,
     totalPoints,
@@ -305,25 +348,70 @@ function rankParticipants(entries, officialWinner) {
   if (!officialWinner) return [];
   const scored = entries.map((e) => scoreParticipant(e, officialWinner));
 
+  // Sorting hierarchy:
+  // 1. Complete votes first (must have both Women and Men selections)
+  // 2. Number of champion matches (2 > 1 > 0)
+  // 3. Total points (highest score)
+  // 4. Total attempts diff (closest attempts)
+  // 5. Total score diff (closest tops & zones)
   scored.sort((a, b) => {
+    if (a.hasBothPicks !== b.hasBothPicks) return a.hasBothPicks ? -1 : 1;
+    if (b.championMatches !== a.championMatches) return b.championMatches - a.championMatches;
     if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
     if (a.totalAttemptsDiff !== b.totalAttemptsDiff) return a.totalAttemptsDiff - b.totalAttemptsDiff;
     return a.totalScoreDiff - b.totalScoreDiff;
   });
 
-  if (scored.length > 0) {
-    const top = scored[0];
-    scored.forEach((item, index) => {
-      item.rank = index + 1;
-      item.isWinner = (
-        item.totalPoints === top.totalPoints &&
-        item.totalAttemptsDiff === top.totalAttemptsDiff &&
-        item.totalScoreDiff === top.totalScoreDiff
+  const eligible = scored.filter((item) => item.hasBothPicks);
+  const incomplete = scored.filter((item) => !item.hasBothPicks);
+
+  // Winner rule: To win, a participant MUST have picked both categories AND matched both champions (2/2)!
+  // If no one in the entire contest matched both (0 participants with 2/2), fallback to 1 champion match.
+  const match2 = eligible.filter((item) => item.championMatches === 2);
+  const candidatePool = match2.length > 0 
+    ? match2 
+    : eligible.filter((item) => item.championMatches === 1);
+
+  const top = candidatePool.length > 0 ? candidatePool[0] : null;
+
+  let currentRank = 1;
+  eligible.forEach((item, index) => {
+    if (index > 0) {
+      const prev = eligible[index - 1];
+      const isTied = (
+        item.championMatches === prev.championMatches &&
+        item.totalPoints === prev.totalPoints &&
+        item.totalAttemptsDiff === prev.totalAttemptsDiff &&
+        item.totalScoreDiff === prev.totalScoreDiff
       );
-    });
-  }
+      if (!isTied) {
+        currentRank = index + 1;
+      }
+    } else {
+      currentRank = 1;
+    }
+    item.rank = currentRank;
+    item.isWinner = Boolean(
+      top &&
+      item.championMatches === top.championMatches &&
+      item.championMatches > 0 &&
+      item.totalPoints === top.totalPoints &&
+      item.totalAttemptsDiff === top.totalAttemptsDiff &&
+      item.totalScoreDiff === top.totalScoreDiff
+    );
+    item.isIncomplete = false;
+  });
+
+  let nextRank = eligible.length + 1;
+  incomplete.forEach((item) => {
+    item.rank = nextRank++;
+    item.isWinner = false;
+    item.isIncomplete = true;
+  });
+
   return scored;
 }
+
 
 // ================= UI HELPERS =================
 function showDetailsMessage(message, error = false) {
@@ -339,11 +427,30 @@ function setSubmitting(button, submitting) {
   button.style.cursor = submitting ? 'wait' : '';
 }
 
-function showView(viewName) {
+function showView(viewName, pushHistory = true) {
+  if (viewName === 'home') viewName = 'welcome';
+  if ((viewName === 'pick-woman' || viewName === 'score-woman' || viewName === 'pick-man' || viewName === 'score-man') && (!pendingParticipant || !pendingParticipant.name)) {
+    viewName = 'register';
+  }
+
+  if (viewName === 'pick-woman' && typeof renderWomenFinalistPool === 'function') renderWomenFinalistPool();
+  if (viewName === 'score-woman' && typeof renderWomenIfscCard === 'function') renderWomenIfscCard();
+  if (viewName === 'pick-man' && typeof renderMenFinalistPool === 'function') renderMenFinalistPool();
+  if (viewName === 'score-man' && typeof renderMenIfscCard === 'function') renderMenIfscCard();
+  if (viewName === 'results' && typeof render === 'function') render();
+
   document.querySelectorAll('.app-view').forEach((view) => {
     view.classList.toggle('is-active', view.dataset.view === viewName);
   });
   appFrame.scrollTo({ top: 0, behavior: 'instant' });
+
+  if (pushHistory) {
+    if (history.state?.panel === 'admin') {
+      history.replaceState({ view: viewName }, '', `#${viewName}`);
+    } else if (!history.state || history.state.view !== viewName) {
+      history.pushState({ view: viewName }, '', `#${viewName}`);
+    }
+  }
 }
 
 // ================= SEQUENTIAL WIZARD ENGINE =================
@@ -612,89 +719,103 @@ function renderPublicResults() {
   const resultsEl = document.querySelector('#resultsContent');
   if (!resultsEl) return;
 
+  const resultsTitle = document.querySelector('#resultsTitle');
   const official = parseOfficialWinner(state.winner);
   let html = '';
 
-  // 1. Official Champions Banner (Women First, then Men)
+  // OFFICIAL FINALS SCORING & LEADERBOARD
   if (official && (official.women?.climber || official.men?.climber)) {
-    html += `
-      <div class="champions-banner">
-        <span class="champions-tag">🏆 OFFICIAL BOULDER CHAMPIONS</span>
-        <div class="champions-grid">
-          <div class="champ-col">
-            <span class="champ-role">WOMEN'S CHAMPION</span>
-            <b class="champ-name">${escapeHtml(official.women?.climber || 'TBD')}</b>
-            <span class="champ-score-pill">${escapeHtml(official.women?.scoreStr || '—')}</span>
-          </div>
-          <div class="champ-col">
-            <span class="champ-role">MEN'S CHAMPION</span>
-            <b class="champ-name">${escapeHtml(official.men?.climber || 'TBD')}</b>
-            <span class="champ-score-pill">${escapeHtml(official.men?.scoreStr || '—')}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  } else {
-    html += `
-      <div class="deadline-pill" style="margin-bottom: 20px; width: 100%;">
-        <span class="status-dot"></span>
-        <span>Finals start at <b>20:30</b> · Official score &amp; winners announced after the podium</span>
-      </div>
-    `;
-  }
+    if (resultsTitle) {
+      resultsTitle.innerHTML = 'CONTEST<br /><span class="title-accent">LEADERBOARD</span>';
+    }
 
-  // 2. Lucky Draw Raffle Winner
-  if (state.raffleWinner) {
-    html += `
-      <div class="raffle-winner-card">
-        <span>🎉 OFFICIAL RAFFLE WINNER</span>
-        <h4>${escapeHtml(state.raffleWinner)}</h4>
-        <p>Congratulations! Claim your spectator prize pack at the organizer desk.</p>
-      </div>
-    `;
-  }
-
-  // 3. Ranked Leaderboard & Podium
-  if (official && (official.women?.climber || official.men?.climber)) {
     const ranked = rankParticipants(state.entries, official);
     const podiumWinners = ranked.filter((r) => r.isWinner);
 
+    // 1. Official Boulder Champions (Yellow boxes with soft yellow neon, name on tape, score below)
+    const champBox = (role, pick) => `
+      <div class="champ-box">
+        <span class="champ-role">${role}</span>
+        <b class="champ-name-tape">${escapeHtml(pick?.climber || 'TBD')}</b>
+        <span class="champ-score-pill">${escapeHtml(pick?.scoreStr || '—')}</span>
+      </div>
+    `;
+
+    html += `
+      <div class="champions-grid">
+        ${champBox("WOMEN'S CHAMPION", official.women)}
+        ${champBox("MEN'S CHAMPION", official.men)}
+      </div>
+    `;
+
+    // 2. Contest Winners Podium (Names separate, big chalk-smudged tape, total points + predicted IFSC scores)
     if (podiumWinners.length > 0) {
-      html += `
-        <div class="podium-card">
-          <span class="podium-tag">👑 CONTEST WINNER${podiumWinners.length > 1 ? 'S (TIED)' : ''}</span>
-          ${podiumWinners.map((w) => `
-            <h4 class="podium-name">${escapeHtml(w.entry.name)}</h4>
-            <div class="podium-stats">
-              <span class="podium-points">${w.totalPoints} PTS / 270</span>
-              <small>Women: ${w.womenScore.total} pts · Men: ${w.menScore.total} pts</small>
+      html += podiumWinners.map((w) => {
+        const winnerTag = podiumWinners.length > 1 ? '👑 #1 CO-WINNER' : '👑 #1 CONTEST WINNER';
+        return `
+          <div class="podium-card podium-neon">
+            <span class="podium-tag">${winnerTag}</span>
+            <div class="podium-name-tape">${escapeHtml(w.entry.name)}</div>
+            <div class="podium-points">
+              <b>${w.totalPoints}</b>
+              <span>PTS / 270</span>
             </div>
-          `).join('')}
+            <div class="podium-scores-grid">
+              <div class="podium-score-row podium-score-women ${w.womenScore.winnerMatch ? 'is-match' : ''}">
+                <span class="podium-score-tag">WOMEN</span>
+                <span class="podium-score-climber">${escapeHtml(w.pred?.women?.climber || '—')}</span>
+                <span class="podium-score-val">${escapeHtml(w.pred?.women?.scoreStr || '—')}</span>
+                <span class="podium-score-pts">+${w.womenScore.total} PTS</span>
+              </div>
+              <div class="podium-score-row podium-score-men ${w.menScore.winnerMatch ? 'is-match' : ''}">
+                <span class="podium-score-tag">MEN</span>
+                <span class="podium-score-climber">${escapeHtml(w.pred?.men?.climber || '—')}</span>
+                <span class="podium-score-val">${escapeHtml(w.pred?.men?.scoreStr || '—')}</span>
+                <span class="podium-score-pts">+${w.menScore.total} PTS</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      html += `
+        <div class="podium-card podium-neon is-empty">
+          <span class="podium-tag">👑 CONTEST WINNER</span>
+          <h4 class="podium-empty-title">NO PARTICIPANT HIT A CHAMPION</h4>
+          <p class="podium-empty-note">To win, a participant must match at least one champion. Check the full ranking below!</p>
         </div>
       `;
     }
 
+    // 3. Full Participant Leaderboard (Original card container, Men's pick BELOW Women's pick)
     if (ranked.length > 0) {
       html += `
         <div class="leaderboard-wrap">
           <div class="leaderboard-header">
-            <span class="leaderboard-title">PREDICTION LEADERBOARD</span>
+            <span class="leaderboard-title">FULL PARTICIPANT LEADERBOARD</span>
             <span class="leaderboard-count">${ranked.length} ENTRIES</span>
           </div>
           <div class="leaderboard-list">
             ${ranked.map((r) => `
-              <div class="lb-entry ${r.isWinner ? 'is-winner' : ''}">
+              <div class="lb-entry ${r.isWinner ? 'is-winner' : ''} ${r.isIncomplete ? 'is-incomplete' : ''}">
                 <span class="lb-rank">#${r.rank}</span>
                 <div class="lb-info">
-                  <b class="lb-name">${escapeHtml(r.entry.name)}</b>
-                  <span class="lb-picks">
-                    W: ${escapeHtml(r.pred?.women?.climber || '—')} (${escapeHtml(r.pred?.women?.scoreStr || '')}) · 
-                    M: ${escapeHtml(r.pred?.men?.climber || '—')} (${escapeHtml(r.pred?.men?.scoreStr || '')})
-                  </span>
+                  <b class="lb-name">${escapeHtml(r.entry.name)}${r.isIncomplete ? ' <i class="lb-flag">INCOMPLETE</i>' : ''}</b>
+                  <div class="lb-picks">
+                    <div class="lb-pick-row lb-pick-women ${r.womenScore.winnerMatch ? 'is-match' : ''}">
+                      <span class="lb-pick-tag">W:</span>
+                      <span class="lb-pick-climber">${escapeHtml(r.pred?.women?.climber || '—')}</span>
+                      <span class="lb-pick-score">${escapeHtml(r.pred?.women?.scoreStr || '—')}</span>
+                    </div>
+                    <div class="lb-pick-row lb-pick-men ${r.menScore.winnerMatch ? 'is-match' : ''}">
+                      <span class="lb-pick-tag">M:</span>
+                      <span class="lb-pick-climber">${escapeHtml(r.pred?.men?.climber || '—')}</span>
+                      <span class="lb-pick-score">${escapeHtml(r.pred?.men?.scoreStr || '—')}</span>
+                    </div>
+                  </div>
                 </div>
                 <div class="lb-score-col">
                   <b class="lb-pts">${r.totalPoints} PTS</b>
-                  <span class="lb-breakdown">W:+${r.womenScore.total} M:+${r.menScore.total}</span>
                 </div>
               </div>
             `).join('')}
@@ -704,7 +825,19 @@ function renderPublicResults() {
     } else {
       html += '<p class="empty-results">No spectator predictions entered yet.</p>';
     }
+
   } else {
+    if (resultsTitle) {
+      resultsTitle.innerHTML = 'FAN<br /><span class="title-accent">FAVORITES</span>';
+    }
+
+    // Pre-results: Live Crowd Odds Breakdown
+    html += `
+      <div class="deadline-pill" style="margin-bottom: 20px; width: 100%;">
+        <span class="status-dot"></span>
+        <span>Finals start at <b>20:30</b> · Official score &amp; winners announced after the podium</span>
+      </div>
+    `;
     // 4. Pre-results: Live Crowd Odds Breakdown (Women First!)
     const crowd = getCrowdStats();
     if (crowd.total > 0) {
@@ -766,9 +899,9 @@ function render() {
   const championStatusEl = document.querySelector('#championStatus');
   if (championStatusEl) {
     if (official && (official.women?.climber || official.men?.climber)) {
-      championStatusEl.textContent = `${official.women?.climber || ''} & ${official.men?.climber || ''}`.toUpperCase();
+      championStatusEl.textContent = 'DECLARED';
       championStatusEl.className = 'status-badge announced';
-      championStatusEl.title = `Official Champions: Women (${official.women?.climber} ${official.women?.scoreStr}), Men (${official.men?.climber} ${official.men?.scoreStr})`;
+      championStatusEl.title = `Official Champions: Women (${official.women?.climber || '—'} ${official.women?.scoreStr || ''}), Men (${official.men?.climber || '—'} ${official.men?.scoreStr || ''})`;
     } else {
       championStatusEl.textContent = 'NOT DECLARED';
       championStatusEl.className = 'status-badge pending';
@@ -791,15 +924,16 @@ function render() {
       : '<span class="status-dot is-closed"></span><span>Predictions are <b>closed</b> · Finals in progress!</span>';
   }
 
-  const poolBox = document.querySelector('#poolControlBox');
-  if (poolBox) {
-    poolBox.classList.toggle('is-closed', !state.predictionsOpen);
-  }
-
   const openStatusEl = document.querySelector('#openStatus');
   if (openStatusEl) {
-    openStatusEl.textContent = state.predictionsOpen ? 'PREDICTIONS OPEN' : '🔴 PREDICTIONS CLOSED';
+    openStatusEl.textContent = state.predictionsOpen ? 'OPEN' : 'CLOSED';
     openStatusEl.className = `status-badge ${state.predictionsOpen ? 'open' : 'closed'}`;
+  }
+
+  const statusCard = document.querySelector('.admin-status-card');
+  if (statusCard) {
+    statusCard.classList.toggle('is-open', !!state.predictionsOpen);
+    statusCard.classList.toggle('is-closed', !state.predictionsOpen);
   }
 
   const toggleBtn = document.querySelector('#toggleOpen');
@@ -831,14 +965,6 @@ function render() {
       : '<p class="admin-empty">No participants registered yet.</p>';
   }
 
-  if (state.raffleWinner && raffleResultBox) {
-    raffleResultBox.hidden = false;
-    raffleResultBox.innerHTML = `
-      <b>🎉 CURRENT RAFFLE WINNER</b>
-      <p style="margin:4px 0 0;font-size:14px;color:var(--ink);">${escapeHtml(state.raffleWinner)}</p>
-    `;
-  }
-
   renderPublicResults();
   updateAdminUi();
 }
@@ -852,11 +978,23 @@ function updateAdminUi() {
     : 'Local demo mode: Data stored in this browser only. Configure Supabase to share predictions across all mobiles.';
 }
 
-function setPanel(open) {
+function setPanel(open, pushHistory = true) {
+  const wasOpen = !adminPanel.hidden;
   adminPanel.hidden = !open;
   scrim.hidden = !open;
   document.querySelector('#adminToggle').setAttribute('aria-expanded', String(open));
   document.body.style.overflow = open ? 'hidden' : '';
+
+  if (open && !wasOpen) {
+    if (pushHistory) {
+      const activeView = document.querySelector('.app-view.is-active')?.dataset.view || 'welcome';
+      history.pushState({ view: activeView, panel: 'admin' }, '', '#admin');
+    }
+  } else if (!open && wasOpen) {
+    if (pushHistory && history.state?.panel === 'admin') {
+      window.history.back();
+    }
+  }
 }
 
 // ================= SUPABASE DATA SYNC =================
@@ -877,6 +1015,10 @@ async function loadRemoteState() {
   }
 
   const contactsByPrediction = new Map(((contactsResponse && !contactsResponse.error) ? contactsResponse.data || [] : []).map((item) => [item.prediction_id, item]));
+  const remoteWinner = settingsResponse.data?.official_winner || '';
+  const parsedRemote = parseOfficialWinner(remoteWinner);
+  const isValidRemoteWinner = Boolean(parsedRemote && (parsedRemote.women?.climber || parsedRemote.men?.climber));
+
   state = {
     entries: (predictionsResponse.data || []).map((item) => ({
       id: item.id,
@@ -886,8 +1028,7 @@ async function loadRemoteState() {
       contactValue: contactsByPrediction.get(item.id)?.contact_value || item.participant_name,
       createdAt: item.created_at
     })),
-    winner: sessionStorage.getItem('blok_test_winner') || settingsResponse.data?.official_winner || '',
-    raffleWinner: sessionStorage.getItem('blok_test_raffle_winner') || settingsResponse.data?.raffle_winner || '',
+    winner: (isValidRemoteWinner ? remoteWinner : '') || sessionStorage.getItem('blok_test_winner') || state.winner || '',
     predictionsOpen: settingsResponse.data ? (settingsResponse.data.predictions_open !== false) : state.predictionsOpen
   };
 }
@@ -925,8 +1066,8 @@ if (detailsForm) {
 
     // Reset draft picks
     draftPick = {
-      women: { climber: '', tops: 4, zones: 4, att_top: 4, att_zone: 4, scoreStr: '4T4z 4 4' },
-      men: { climber: '', tops: 3, zones: 4, att_top: 6, att_zone: 5, scoreStr: '3T4z 6 5' }
+      women: { climber: '', tops: 4, zones: 4, att_top: 4, att_zone: 4, scoreStr: '4T4 4Z4' },
+      men: { climber: '', tops: 3, zones: 4, att_top: 6, att_zone: 5, scoreStr: '3T6 4Z5' }
     };
 
     // Begin Step 1: Pick Women's Champion!
@@ -1065,22 +1206,40 @@ if (officialResultsForm) {
 
   function updateAdminBadges() {
     if (adminWomenBadge && adminWomenTops && adminWomenZones && adminWomenAttTop && adminWomenAttZone) {
-      const women = sanitizeIfsc({
-        tops: adminWomenTops.value,
-        zones: adminWomenZones.value,
-        att_top: adminWomenAttTop.value,
-        att_zone: adminWomenAttZone.value
-      });
-      adminWomenBadge.textContent = women.scoreStr;
+      const wT = adminWomenTops.value.trim();
+      const wZ = adminWomenZones.value.trim();
+      const wAT = adminWomenAttTop.value.trim();
+      const wAZ = adminWomenAttZone.value.trim();
+
+      if (wT === '' && wZ === '' && wAT === '' && wAZ === '') {
+        adminWomenBadge.textContent = '—';
+      } else {
+        const women = sanitizeIfsc({
+          tops: wT === '' ? 0 : wT,
+          zones: wZ === '' ? 0 : wZ,
+          att_top: wAT === '' ? 0 : wAT,
+          att_zone: wAZ === '' ? 0 : wAZ
+        });
+        adminWomenBadge.textContent = women.scoreStr;
+      }
     }
     if (adminMenBadge && adminMenTops && adminMenZones && adminMenAttTop && adminMenAttZone) {
-      const men = sanitizeIfsc({
-        tops: adminMenTops.value,
-        zones: adminMenZones.value,
-        att_top: adminMenAttTop.value,
-        att_zone: adminMenAttZone.value
-      });
-      adminMenBadge.textContent = men.scoreStr;
+      const mT = adminMenTops.value.trim();
+      const mZ = adminMenZones.value.trim();
+      const mAT = adminMenAttTop.value.trim();
+      const mAZ = adminMenAttZone.value.trim();
+
+      if (mT === '' && mZ === '' && mAT === '' && mAZ === '') {
+        adminMenBadge.textContent = '—';
+      } else {
+        const men = sanitizeIfsc({
+          tops: mT === '' ? 0 : mT,
+          zones: mZ === '' ? 0 : mZ,
+          att_top: mAT === '' ? 0 : mAT,
+          att_zone: mAZ === '' ? 0 : mAZ
+        });
+        adminMenBadge.textContent = men.scoreStr;
+      }
     }
   }
 
@@ -1097,25 +1256,26 @@ if (officialResultsForm) {
       return window.alert("Please select both a Women's and Men's champion.");
     }
 
+    if (adminWomenTops.value.trim() === '' || adminWomenZones.value.trim() === '' ||
+        adminMenTops.value.trim() === '' || adminMenZones.value.trim() === '') {
+      return window.alert("Please fill in the official Tops and Zones for both categories.");
+    }
+
     const officialResult = {
-      women: {
+      women: sanitizeIfsc({
         climber: womenWinner,
-        ...sanitizeIfsc({
-          tops: adminWomenTops.value,
-          zones: adminWomenZones.value,
-          att_top: adminWomenAttTop.value,
-          att_zone: adminWomenAttZone.value
-        })
-      },
-      men: {
+        tops: adminWomenTops.value,
+        zones: adminWomenZones.value,
+        att_top: adminWomenAttTop.value,
+        att_zone: adminWomenAttZone.value
+      }),
+      men: sanitizeIfsc({
         climber: menWinner,
-        ...sanitizeIfsc({
-          tops: adminMenTops.value,
-          zones: adminMenZones.value,
-          att_top: adminMenAttTop.value,
-          att_zone: adminMenAttZone.value
-        })
-      }
+        tops: adminMenTops.value,
+        zones: adminMenZones.value,
+        att_top: adminMenAttTop.value,
+        att_zone: adminMenAttZone.value
+      })
     };
 
     const officialCompactStr = encodePrediction(officialResult.women, officialResult.men);
@@ -1126,7 +1286,7 @@ if (officialResultsForm) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     render();
 
-    setPanel(false);
+    setPanel(false, false);
     showView('results');
 
     if (remoteEnabled) {
@@ -1145,7 +1305,77 @@ if (officialResultsForm) {
       }
     }
   });
+
+  // ================= ADMIN: RESET OFFICIAL RESULTS ONLY =================
+  const resetResultsBtn = document.querySelector('#resetResultsBtn');
+
+  async function handleResetOfficialResults() {
+    const confirmation = window.confirm(
+      '↺ Are you sure you want to reset the official finals results?\n\nThis will clear the official champions and restore the public view to favorites. Registered spectator predictions will be preserved.'
+    );
+    if (!confirmation) return;
+
+    if (resetResultsBtn) setSubmitting(resetResultsBtn, true);
+
+    try {
+      // 1. Reset local state & session storage
+      state.winner = '';
+      sessionStorage.removeItem('blok_test_winner');
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+      // 2. Clear input controls in Admin form
+      if (adminWomenWinner) adminWomenWinner.value = '';
+      if (adminWomenTops) adminWomenTops.value = '';
+      if (adminWomenZones) adminWomenZones.value = '';
+      if (adminWomenAttTop) adminWomenAttTop.value = '';
+      if (adminWomenAttZone) adminWomenAttZone.value = '';
+      if (adminWomenBadge) adminWomenBadge.textContent = '—';
+
+      if (adminMenWinner) adminMenWinner.value = '';
+      if (adminMenTops) adminMenTops.value = '';
+      if (adminMenZones) adminMenZones.value = '';
+      if (adminMenAttTop) adminMenAttTop.value = '';
+      if (adminMenAttZone) adminMenAttZone.value = '';
+      if (adminMenBadge) adminMenBadge.textContent = '—';
+
+      // 3. Update Supabase if connected
+      if (remoteEnabled) {
+        try {
+          const { data, error } = await database.from('event_settings').update({
+            official_winner: null,
+            updated_at: new Date().toISOString()
+          }).eq('id', 'main').select('id');
+
+          if (error) {
+            console.warn('Remote reset warning:', error);
+            window.alert('⚠️ Database error: ' + error.message);
+          } else if (!data || data.length === 0) {
+            console.warn('RLS blocked event_settings update: 0 rows returned.');
+            window.alert(
+              '⚠️ Supabase Row Level Security (RLS) blocked the remote update.\n\nTo allow updating results from the web app, run this query in Supabase SQL Editor:\n\nDROP POLICY IF EXISTS "admins can change event settings" ON public.event_settings;\nCREATE POLICY "public change settings" ON public.event_settings FOR UPDATE USING (true) WITH CHECK (true);'
+            );
+          } else {
+            window.alert('✅ Official results have been reset in the database.');
+          }
+          await refresh();
+        } catch (err) {
+          console.error(err);
+        }
+      } else {
+        render();
+        window.alert('✅ Official results have been reset.');
+      }
+    } catch (err) {
+      console.error(err);
+      window.alert('Error resetting official results.');
+    } finally {
+      if (resetResultsBtn) setSubmitting(resetResultsBtn, false);
+    }
+  }
+
+  if (resetResultsBtn) resetResultsBtn.addEventListener('click', handleResetOfficialResults);
 }
+
 
 // ================= ADMIN: TOGGLE PREDICTIONS POOL =================
 document.querySelector('#toggleOpen').addEventListener('click', async (event) => {
@@ -1170,65 +1400,6 @@ document.querySelector('#toggleOpen').addEventListener('click', async (event) =>
     }
   }
 });
-
-// ================= ADMIN: LUCKY DRAW RAFFLE PICKER =================
-if (drawRaffleBtn) {
-  drawRaffleBtn.addEventListener('click', async () => {
-    const official = parseOfficialWinner(state.winner);
-    let candidates = [];
-
-    if (official) {
-      const ranked = rankParticipants(state.entries, official);
-      candidates = ranked.filter((r) => r.womenScore.winnerMatch || r.menScore.winnerMatch).map((r) => r.entry);
-    }
-    if (candidates.length === 0) {
-      candidates = state.entries;
-    }
-
-    if (!candidates.length) {
-      window.alert('No participants registered yet to draw from.');
-      return;
-    }
-
-    raffleResultBox.hidden = false;
-    drawRaffleBtn.disabled = true;
-
-    let counter = 0;
-    clearInterval(raffleInterval);
-    raffleInterval = setInterval(() => {
-      const candidate = candidates[counter % candidates.length];
-      raffleResultBox.innerHTML = `
-        <span class="micro-label" style="color:var(--tape-yellow);">SHUFFLING...</span>
-        <b>${escapeHtml(candidate.name)}</b>
-      `;
-      counter++;
-    }, 80);
-
-    setTimeout(async () => {
-      clearInterval(raffleInterval);
-      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-      state.raffleWinner = chosen.name;
-      sessionStorage.setItem('blok_test_raffle_winner', chosen.name);
-
-      raffleResultBox.innerHTML = `
-        <b>🎉 DRAW WINNER: ${escapeHtml(chosen.name)}</b>
-        <small>Contact: ${escapeHtml(chosen.contactValue || 'NAME ONLY')}</small>
-      `;
-      drawRaffleBtn.disabled = false;
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      render();
-
-      if (remoteEnabled) {
-        try {
-          await database.from('event_settings').update({ raffle_winner: chosen.name, updated_at: new Date().toISOString() }).eq('id', 'main');
-        } catch (err) {
-          console.warn('Could not persist raffle winner to remote:', err);
-        }
-      }
-    }, 1200);
-  });
-}
 
 // ================= SEED 100 REALISTIC COMMUNITY TEST VOTERS =================
 function generate100CommunityPredictions() {
@@ -1307,54 +1478,89 @@ function generate100CommunityPredictions() {
 }
 
 if (seedTestBtn) {
-  seedTestBtn.addEventListener('click', () => {
-    const seeded = generate100CommunityPredictions();
-    state.entries = seeded;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    render();
-    window.alert('✅ 100 realistic community predictions seeded (Women first, then Men)!');
+  seedTestBtn.addEventListener('click', async () => {
+    setSubmitting(seedTestBtn, true);
+    try {
+      const seeded = generate100CommunityPredictions();
+      if (remoteEnabled) {
+        await database.from('predictions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        const rows = seeded.map((s) => ({
+          participant_name: s.name,
+          climber_name: s.climber
+        }));
+        await database.from('predictions').insert(rows);
+        await refresh();
+      } else {
+        state.entries = seeded;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render();
+      }
+      window.alert('✅ 100 realistic community predictions seeded (Women first, then Men)!');
+    } catch (err) {
+      console.error(err);
+      window.alert('Error seeding test voters.');
+    } finally {
+      setSubmitting(seedTestBtn, false);
+    }
   });
 }
 
-// Auto-seed if empty on initial load
-if (state.entries.length === 0) {
-  state.entries = generate100CommunityPredictions();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+// ================= ADMIN: DELETE PARTICIPANTS ONLY =================
+const clearDataBtn = document.querySelector('#clearData');
+if (clearDataBtn) {
+  clearDataBtn.addEventListener('click', async () => {
+    const confirmation = window.confirm(
+      '⚠️ Are you sure you want to delete all participant records?\n\nThis will permanently remove all spectator bets and predictions, while keeping your official champions and results intact.'
+    );
+
+    if (!confirmation) return;
+
+    setSubmitting(clearDataBtn, true);
+
+    try {
+      if (remoteEnabled) {
+        // 1. Delete associated contacts first if any exist
+        try {
+          await database.from('prediction_contacts').delete().neq('prediction_id', '00000000-0000-0000-0000-000000000000');
+        } catch (e) {
+          console.warn('Contacts cleanup:', e);
+        }
+
+        // 2. Delete all participant predictions
+        const deleteResp = await database.from('predictions').delete().neq('id', '00000000-0000-0000-0000-000000000000').select('id');
+
+        if (deleteResp.error) {
+          console.error('Delete predictions error:', deleteResp.error);
+          window.alert('⚠️ Database error: ' + deleteResp.error.message);
+        } else if (state.entries.length > 0 && (!deleteResp.data || deleteResp.data.length === 0)) {
+          // Supabase RLS blocked deletion because anon delete policy is missing
+          window.alert(
+            '⚠️ Supabase Row Level Security (RLS) blocked the delete.\n\nTo allow deleting participants, run this 1-line query in Supabase SQL Editor:\n\nCREATE POLICY "public delete predictions" ON public.predictions FOR DELETE USING (true);'
+          );
+        } else {
+          window.alert('✅ All participant records have been deleted successfully.');
+        }
+
+        // Clear local entries and refresh UI
+        state.entries = [];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        await refresh();
+      } else {
+        state.entries = [];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render();
+        window.alert('✅ All participant records have been deleted successfully.');
+      }
+    } catch (err) {
+      console.error(err);
+      window.alert('Error deleting participant records.');
+    } finally {
+      setSubmitting(clearDataBtn, false);
+    }
+  });
 }
 
-// ================= ADMIN: DANGER ZONE RESET =================
-document.querySelector('#clearData').addEventListener('click', async () => {
-  const confirmation = window.prompt(
-    '⚠️ WARNING: This will permanently delete all registered predictions and reset the official champions.\n\nTo confirm, type RESET in capital letters:'
-  );
-
-  if (confirmation !== 'RESET') {
-    if (confirmation !== null) {
-      window.alert('Action cancelled. To reset all event data you must type RESET exactly.');
-    }
-    return;
-  }
-
-  sessionStorage.removeItem('blok_test_winner');
-  sessionStorage.removeItem('blok_test_raffle_winner');
-
-  try {
-    if (remoteEnabled) {
-      const removeResponse = await database.from('predictions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      if (removeResponse.error) return window.alert('Could not delete data from database.');
-      await database.from('event_settings').update({ official_winner: null, raffle_winner: null, predictions_open: true }).eq('id', 'main');
-      await refresh();
-    } else {
-      state = { entries: [], winner: '', raffleWinner: '', predictionsOpen: true };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      render();
-    }
-    window.alert('All event data successfully reset.');
-  } catch (err) {
-    console.error(err);
-    window.alert('Error resetting data.');
-  }
-});
 
 // ================= GENERAL NAVIGATION & SETUP =================
 document.querySelector('#adminToggle').addEventListener('click', () => {
@@ -1395,3 +1601,80 @@ if (remoteEnabled) {
 // Initial setup
 setupSequentialControls();
 refresh();
+
+// Initialize browser history on first load
+const hash = window.location.hash.replace('#', '');
+if (hash === 'admin') {
+  history.replaceState({ view: 'welcome' }, '', '#welcome');
+  setPanel(true, true);
+} else if (hash && hash !== 'welcome') {
+  const initialView = hash === 'home' ? 'welcome' : hash;
+  showView(initialView, false);
+  history.replaceState({ view: initialView }, '', '#' + initialView);
+} else {
+  history.replaceState({ view: 'welcome' }, '', '#welcome');
+}
+
+// Mobile Native Edge-Swipe & Popstate Navigation (prevents app from closing on swipe back!)
+window.addEventListener('popstate', (event) => {
+  // If the admin panel was open and popstate navigated away from admin, close the panel without exiting app!
+  if (adminPanel && !adminPanel.hidden && event.state?.panel !== 'admin') {
+    setPanel(false, false);
+    return;
+  }
+
+  // If popstate targets admin panel
+  if (event.state?.panel === 'admin') {
+    setPanel(true, false);
+    return;
+  }
+
+  let targetView = event.state?.view || window.location.hash.replace('#', '') || 'welcome';
+  if (targetView === 'home') targetView = 'welcome';
+  showView(targetView, false);
+});
+
+// Touch Gesture Navigation: Swipe right anywhere to go back
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartTime = 0;
+let touchStartedInAdmin = false;
+
+document.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchStartTime = Date.now();
+  touchStartedInAdmin = Boolean(adminPanel && !adminPanel.hidden && e.target && e.target.closest && e.target.closest('#adminPanel'));
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+  if (e.changedTouches.length !== 1) return;
+  const touchEndX = e.changedTouches[0].clientX;
+  const touchEndY = e.changedTouches[0].clientY;
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+  const elapsed = Date.now() - touchStartTime;
+
+  // Horizontal swipe from left to right (diffX > 55px, mostly horizontal, elapsed < 500ms)
+  if (diffX > 55 && Math.abs(diffX) > Math.abs(diffY) * 1.3 && elapsed < 500) {
+    if (touchStartedInAdmin || (adminPanel && !adminPanel.hidden)) {
+      setPanel(false);
+      return;
+    }
+
+    const activeView = document.querySelector('.app-view.is-active');
+    if (!activeView) return;
+    const viewName = activeView.dataset.view;
+    if (viewName === 'welcome') return;
+
+    const backBtn = activeView.querySelector('.back-button[data-view-target]');
+    if (backBtn && backBtn.dataset.viewTarget) {
+      showView(backBtn.dataset.viewTarget);
+    } else if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      showView('welcome');
+    }
+  }
+}, { passive: true });

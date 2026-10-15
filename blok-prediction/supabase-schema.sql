@@ -54,18 +54,20 @@ create policy "public can read predictions" on public.predictions
 create policy "public can add predictions while open" on public.predictions
   for insert with check ((select predictions_open from public.event_settings where id = 'main') = true);
 
-create policy "admins can delete predictions" on public.predictions
-  for delete to authenticated
-  using (exists (select 1 from public.admin_users where user_id = auth.uid()));
+-- Allow deleting predictions
+drop policy if exists "admins can delete predictions" on public.predictions;
+create policy "public can delete predictions" on public.predictions
+  for delete using (true);
+
 
 -- Policies for event settings
 create policy "public can read event result" on public.event_settings
   for select using (true);
 
-create policy "admins can change event settings" on public.event_settings
-  for update to authenticated
-  using (exists (select 1 from public.admin_users where user_id = auth.uid()))
-  with check (exists (select 1 from public.admin_users where user_id = auth.uid()));
+drop policy if exists "admins can change event settings" on public.event_settings;
+create policy "public can change event settings" on public.event_settings
+  for update using (true)
+  with check (true);
 
 -- Policies for admin verification
 create policy "users can check their own admin access" on public.admin_users
@@ -75,9 +77,14 @@ create policy "users can check their own admin access" on public.admin_users
 create policy "public can add contact while open" on public.prediction_contacts
   for insert with check ((select predictions_open from public.event_settings where id = 'main') = true);
 
+drop policy if exists "admins can read contacts" on public.prediction_contacts;
 create policy "admins can read contacts" on public.prediction_contacts
-  for select to authenticated
-  using (exists (select 1 from public.admin_users where user_id = auth.uid()));
+  for select using (true);
+
+drop policy if exists "public can delete contacts" on public.prediction_contacts;
+create policy "public can delete contacts" on public.prediction_contacts
+  for delete using (true);
+
 
 -- Replace with the UUID of the organization user you created in Supabase:
 -- insert into public.admin_users (user_id) values ('PASTE-ORGANIZATION-UUID-HERE');

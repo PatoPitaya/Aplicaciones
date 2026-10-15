@@ -4,12 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#120911" />
-  <meta name="description" content="Blok Open XXL at Klimzaal Blok, Hoboken. Predict the finals champion and enter the prize raffle." />
+  <meta name="description" content="Blok Open XXL at Klimzaal Blok, Hoboken. Predict the finals champions, guess exact IFSC scores, and top the spectator leaderboard." />
+  <meta property="og:title" content="BLOK OPEN XXL — Klimzaal Blok" />
+  <meta property="og:description" content="Predict tonight's boulder finals champions, guess exact IFSC scores, and top the spectator leaderboard." />
+  <meta property="og:image" content="flyer.jpg" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BLOK OPEN XXL — Klimzaal Blok" />
+  <meta name="twitter:description" content="Predict tonight's boulder finals champions, guess exact IFSC scores, and top the spectator leaderboard." />
+  <meta name="twitter:image" content="flyer.jpg" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23120911%22/><text y=%22.9em%22 font-size=%2280%22>🧗</text></svg>" />
   <title>BLOK OPEN XXL — Klimzaal Blok</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=2.9" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=Permanent+Marker&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=5.3" />
   <link rel="stylesheet" href="contact.css?v=2.9" />
 </head>
 <body>
@@ -21,7 +30,9 @@
       <!-- ================= WELCOME VIEW ================= -->
       <section class="app-view is-active welcome-view" data-view="welcome" aria-labelledby="welcomeTitle">
         <header class="app-header">
-          <a class="logo" href="#home" aria-label="BLOK home">
+          <a class="logo logo-small" href="#welcome">
+            <span class="logo-mark">BLOK</span>
+            <span class="logo-sticker">OPEN XXL</span>
           </a>
           <button class="header-link" id="adminToggle" aria-expanded="false" aria-controls="adminPanel">
             ORG. <span>↗</span>
@@ -29,11 +40,7 @@
         </header>
 
         <div class="welcome-content">
-          <p class="micro-label">BLOK OPEN XXL</p>
-
           <h1 id="welcomeTitle">WHO WILL WIN<br /><span class="title-accent">tonight's FINALs?</span></h1>
-
-          <p class="welcome-lead"></p>
 
           <div class="deadline-pill" id="deadlineNote">
             <span class="status-dot"></span>
@@ -59,11 +66,14 @@
           <button class="back-button" data-view-target="welcome" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+          <a class="logo logo-small" href="#welcome">
+            <span class="logo-mark">BLOK</span>
+            <span class="logo-sticker">OPEN XXL</span>
+          </a>
         </header>
 
         <div class="view-content">
-          <p class="micro-label">STEP 1 OF 2 · YOUR NAME</p>
+          <p class="micro-label">STEP 0 · YOUR NAME</p>
           <h2 id="registerTitle">YOUR <span>NAME</span></h2>
           <form id="detailsForm" class="prediction-form">
             <div class="form-group">
@@ -95,7 +105,10 @@
           <button class="back-button" data-view-target="register" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+          <a class="logo logo-small" href="#welcome">
+            <span class="logo-mark">BLOK</span>
+            <span class="logo-sticker">OPEN XXL</span>
+          </a>
         </header>
 
         <div class="view-content">
@@ -108,7 +121,6 @@
               </div>
             </div>
             <h2 id="pickWomanTitle">PICK WOMEN'S<br /><span class="title-accent">CHAMPION</span></h2>
-            <p class="pick-instruction">Select the athlete you believe will take 1st place in the women's boulder final.</p>
           </div>
 
           <!-- Women Finalists Pool -->
@@ -130,7 +142,10 @@
           <button class="back-button" data-view-target="pick-woman" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+          <a class="logo logo-small" href="#welcome">
+            <span class="logo-mark">BLOK</span>
+            <span class="logo-sticker">OPEN XXL</span>
+          </a>
         </header>
 
         <div class="view-content">
@@ -154,7 +169,7 @@
             <div class="score-hero-row">
               <div class="score-hero-badge">
                 <span class="score-badge-label">PREDICTED SCORE</span>
-                <b id="womenIfscLiveScore" class="score-badge-val">4T4z 4 4</b>
+                <b id="womenIfscLiveScore" class="score-badge-val">4T4 4Z4</b>
               </div>
               <div class="score-boulders-badge">
                 <span class="boulders-num">4</span>
@@ -233,7 +248,10 @@
           <button class="back-button" data-view-target="score-woman" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+          <a class="logo logo-small" href="#welcome">
+            <span class="logo-mark">BLOK</span>
+            <span class="logo-sticker">OPEN XXL</span>
+          </a>
         </header>
 
         <div class="view-content">
@@ -246,7 +264,6 @@
               </div>
             </div>
             <h2 id="pickManTitle">PICK MEN'S<br /><span class="title-accent">CHAMPION</span></h2>
-            <p class="pick-instruction">Now select the athlete you believe will take 1st place in the men's boulder final.</p>
           </div>
 
           <!-- Men Finalists Pool -->
@@ -268,7 +285,10 @@
           <button class="back-button" data-view-target="pick-man" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+          <a class="logo logo-small" href="#welcome">
+            <span class="logo-mark">BLOK</span>
+            <span class="logo-sticker">OPEN XXL</span>
+          </a>
         </header>
 
         <div class="view-content">
@@ -292,7 +312,7 @@
             <div class="score-hero-row">
               <div class="score-hero-badge">
                 <span class="score-badge-label">PREDICTED SCORE</span>
-                <b id="menIfscLiveScore" class="score-badge-val">3T4z 6 5</b>
+                <b id="menIfscLiveScore" class="score-badge-val">3T6 4Z5</b>
               </div>
               <div class="score-boulders-badge">
                 <span class="boulders-num">4</span>
@@ -369,20 +389,19 @@
       <!-- ================= SUCCESS VIEW ================= -->
       <section class="app-view success-view" data-view="success" aria-labelledby="successTitle">
         <header class="app-header">
-          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+          <a class="logo logo-small" href="#welcome">
+            <span class="logo-mark">BLOK</span>
+            <span class="logo-sticker">OPEN XXL</span>
+          </a>
         </header>
 
         <div class="success-content">
-          <div class="tape-stamp" aria-hidden="true">
-            <span>CONFIRMED</span>
-          </div>
-
-          <p class="micro-label">CONFIRMATION</p>
           <h2 id="successTitle">PREDICTION<br /><span class="title-accent">LOCKED IN</span></h2>
-          <p class="success-lead">You're on the scorecard. If your climber takes 1st place tonight, you enter the spectator prize raffle!</p>
 
           <div class="receipt-card">
-            <div class="receipt-tape-strip"></div>
+            <div class="receipt-stamp" aria-hidden="true">
+              <span>CONFIRMED</span>
+            </div>
             <div class="receipt-row">
               <span class="receipt-label">PARTICIPANT</span>
               <b class="receipt-value" id="successName">Participant</b>
@@ -396,7 +415,8 @@
               <b class="receipt-value highlight-accent" id="successMenPick">—</b>
             </div>
             <div class="receipt-footer">
-              <span>KLIMZAAL BLOK · BLOK OPEN XXL</span>
+              <span>KLIMZAAL BLOK</span>
+              <span>OFFICIAL TICKET</span>
             </div>
           </div>
 
@@ -409,7 +429,7 @@
             <b aria-hidden="true">→</b>
           </button>
           <button class="secondary-action" data-view-target="results">
-            <span>LIVE ODDS &amp; RESULTS</span>
+            <span>FAN FAVORITES</span>
             <span class="action-arrow">↗</span>
           </button>
         </div>
@@ -421,7 +441,10 @@
           <button class="back-button" data-view-target="welcome" aria-label="Go back">
             ← <span>BACK</span>
           </button>
-          <a class="logo logo-small" href="#home">BLOK Open XXL</a>
+          <a class="logo logo-small" href="#welcome">
+            <span class="logo-mark">BLOK</span>
+            <span class="logo-sticker">OPEN XXL</span>
+          </a>
         </header>
 
         <div class="view-content">
@@ -442,7 +465,7 @@
       <button id="closeAdmin" class="close-admin" aria-label="Close console">×</button>
     </div>
 
-    <p class="admin-intro">Manage event status, crown the official champion, trigger the podium lucky draw, and monitor live submissions.</p>
+    <p class="admin-intro">Manage competition status, enter official finals results, and calculate contest winners.</p>
 
     <!-- Admin Auth Form -->
     <div id="adminAuth" class="admin-auth" hidden>
@@ -459,118 +482,118 @@
 
     <!-- Admin Controls -->
     <div id="adminControls">
-      <!-- Section 1: Event Flow & Champion -->
-      <section class="admin-card">
-        <div class="admin-card-head">
-          <span class="micro-label">EVENT CONTROL</span>
-          <h3>COMPETITION STATUS</h3>
-        </div>
-
-        <!-- Box 1: Predictions Pool Status & Toggle -->
-        <div id="poolControlBox" class="admin-control-box">
-          <div class="admin-box-header">
-            <span class="admin-row-tag">PREDICTIONS POOL</span>
-            <span id="openStatus" class="status-badge open">PREDICTIONS OPEN</span>
+      <!-- Section 1: Competition Status & Pool Control -->
+      <section class="admin-card admin-status-card">
+        <div class="admin-card-head status-card-head">
+          <div>
+            <span class="micro-label">EVENT CONTROL</span>
+            <h3>COMPETITION STATUS</h3>
           </div>
-          <button type="button" id="toggleOpen" class="admin-toggle-btn toggle-open">CLOSE PREDICTIONS NOW</button>
+          <span id="openStatus" class="status-badge open">OPEN</span>
         </div>
-
-        <!-- Box 2: Official Champion Status & Publish (4 IFSC Boulder Finals) -->
-        <div class="admin-control-box admin-results-box">
-          <div class="admin-box-header">
-            <span class="admin-row-tag">OFFICIAL FINALS RESULTS</span>
-            <span id="championStatus" class="status-badge pending">NOT DECLARED</span>
-          </div>
-
-          <form id="officialResultsForm" class="admin-results-form">
-            <!-- Women's Champion Section -->
-            <div class="admin-cat-section">
-              <div class="admin-cat-header">
-                <span class="admin-cat-title">WOMEN'S CHAMPION</span>
-                <span class="admin-cat-badge" id="adminWomenLiveScore">4T4z 5 4</span>
-              </div>
-              <select id="adminWomenWinner" class="admin-select" required>
-                <option value="" disabled selected>Select Women's Champion...</option>
-                <option value="Chloé Caulier">Chloé Caulier (BEL)</option>
-                <option value="Janja Garnbret">Janja Garnbret (SLO)</option>
-                <option value="Laura Rogora">Laura Rogora (ITA)</option>
-                <option value="Oriane Bertone">Oriane Bertone (FRA)</option>
-                <option value="Ai Mori">Ai Mori (JPN)</option>
-              </select>
-              <div class="admin-ifsc-row">
-                <div class="admin-ifsc-field">
-                  <label for="adminWomenTops">TOPS (T)</label>
-                  <input type="number" id="adminWomenTops" min="0" max="4" value="4" required />
-                </div>
-                <div class="admin-ifsc-field">
-                  <label for="adminWomenZones">ZONES (z)</label>
-                  <input type="number" id="adminWomenZones" min="0" max="4" value="4" required />
-                </div>
-                <div class="admin-ifsc-field">
-                  <label for="adminWomenAttTop">ATT. TOP</label>
-                  <input type="number" id="adminWomenAttTop" min="0" max="40" value="5" required />
-                </div>
-                <div class="admin-ifsc-field">
-                  <label for="adminWomenAttZone">ATT. ZONE</label>
-                  <input type="number" id="adminWomenAttZone" min="0" max="40" value="4" required />
-                </div>
-              </div>
-            </div>
-
-            <!-- Men's Champion Section -->
-            <div class="admin-cat-section">
-              <div class="admin-cat-header">
-                <span class="admin-cat-title">MEN'S CHAMPION</span>
-                <span class="admin-cat-badge" id="adminMenLiveScore">3T4z 6 5</span>
-              </div>
-              <select id="adminMenWinner" class="admin-select" required>
-                <option value="" disabled selected>Select Men's Champion...</option>
-                <option value="Hannes Van Duysen">Hannes Van Duysen (BEL)</option>
-                <option value="Simon Lorenzi">Simon Lorenzi (BEL)</option>
-                <option value="Alex Megos">Alex Megos (GER)</option>
-                <option value="Adam Ondra">Adam Ondra (CZE)</option>
-                <option value="Tomoa Narasaki">Tomoa Narasaki (JPN)</option>
-              </select>
-              <div class="admin-ifsc-row">
-                <div class="admin-ifsc-field">
-                  <label for="adminMenTops">TOPS (T)</label>
-                  <input type="number" id="adminMenTops" min="0" max="4" value="3" required />
-                </div>
-                <div class="admin-ifsc-field">
-                  <label for="adminMenZones">ZONES (z)</label>
-                  <input type="number" id="adminMenZones" min="0" max="4" value="4" required />
-                </div>
-                <div class="admin-ifsc-field">
-                  <label for="adminMenAttTop">ATT. TOP</label>
-                  <input type="number" id="adminMenAttTop" min="0" max="40" value="6" required />
-                </div>
-                <div class="admin-ifsc-field">
-                  <label for="adminMenAttZone">ATT. ZONE</label>
-                  <input type="number" id="adminMenAttZone" min="0" max="40" value="5" required />
-                </div>
-              </div>
-            </div>
-
-            <button type="submit" id="calculateWinnersBtn" class="admin-action-btn">
-              ⚡ CALCULATE POINTS &amp; PICK WINNERS →
-            </button>
-          </form>
-        </div>
+        <p class="admin-card-sub">Spectator predictions pool. Close predictions once the finals kick off.</p>
+        <button type="button" id="toggleOpen" class="admin-toggle-btn toggle-open">CLOSE PREDICTIONS NOW</button>
       </section>
 
-      <!-- Section 2: Lucky Draw Raffle Tool -->
-      <section class="admin-card raffle-card">
-        <div class="admin-card-head">
-          <span class="micro-label">PODIUM CEREMONY</span>
-          <h3>LUCKY DRAW PICKER</h3>
+      <!-- Section 2: Official Finals Results (Women First) -->
+      <section class="admin-card admin-results-card">
+        <div class="admin-card-head status-card-head">
+          <div>
+            <span class="micro-label">FINALS RESOLUTION</span>
+            <h3>OFFICIAL FINALS RESULTS</h3>
+          </div>
+          <span id="championStatus" class="status-badge pending">NOT DECLARED</span>
         </div>
-        <p class="raffle-desc">Randomly select a winner among spectators who correctly predicted the champion.</p>
-        <button type="button" id="drawRaffleBtn" class="draw-raffle-button">🎲 DRAW RAFFLE WINNER</button>
-        <div id="raffleResultBox" class="raffle-result-box" hidden></div>
+        <p class="admin-card-sub">Enter official results once all 4 boulders are completed to calculate points and determine winners.</p>
+
+        <form id="officialResultsForm" class="admin-results-form">
+          <!-- Women's Champion Section (Women First!) -->
+          <!-- Women's Champion Section (Women First, Yellow Tape!) -->
+          <div class="admin-category-card admin-cat-women">
+            <div class="admin-category-header">
+              <div class="admin-tape-banner tape-yellow-banner">
+                <span>WOMEN'S CHAMPION</span>
+              </div>
+              <span class="admin-cat-badge badge-yellow" id="adminWomenLiveScore">—</span>
+            </div>
+            <select id="adminWomenWinner" class="admin-select select-women" required>
+              <option value="" disabled selected>Select Women's Champion...</option>
+              <option value="Chloé Caulier">Chloé Caulier (BEL)</option>
+              <option value="Janja Garnbret">Elfe Claes (SLO)</option>
+              <option value="Laura Rogora">Laura Rogora (ITA)</option>
+              <option value="Oriane Bertone">Oriane Bertone (FRA)</option>
+              <option value="Ai Mori">Ai Mori (JPN)</option>
+            </select>
+            <div class="admin-score-grid">
+              <div class="admin-score-input-wrap">
+                <label for="adminWomenTops">TOPS (T)</label>
+                <input type="number" id="adminWomenTops" min="0" max="4" placeholder="0" required />
+              </div>
+              <div class="admin-score-input-wrap">
+                <label for="adminWomenAttTop">ATT. TOPS</label>
+                <input type="number" id="adminWomenAttTop" min="0" max="40" placeholder="0" required />
+              </div>
+              <div class="admin-score-input-wrap">
+                <label for="adminWomenZones">ZONE (Z)</label>
+                <input type="number" id="adminWomenZones" min="0" max="4" placeholder="0" required />
+              </div>
+              <div class="admin-score-input-wrap">
+                <label for="adminWomenAttZone">ATT. ZONE</label>
+                <input type="number" id="adminWomenAttZone" min="0" max="40" placeholder="0" required />
+              </div>
+            </div>
+          </div>
+
+          <!-- Men's Champion Section (Men Second, Pink Tape!) -->
+          <div class="admin-category-card admin-cat-men">
+            <div class="admin-category-header">
+              <div class="admin-tape-banner tape-pink-banner">
+                <span>MEN'S CHAMPION</span>
+              </div>
+              <span class="admin-cat-badge badge-pink" id="adminMenLiveScore">—</span>
+            </div>
+            <select id="adminMenWinner" class="admin-select select-men" required>
+              <option value="" disabled selected>Select Men's Champion...</option>
+              <option value="Hannes Van Duysen">Hannes Van Duysen (BEL)</option>
+              <option value="Simon Lorenzi">Simon Lorenzi (BEL)</option>
+              <option value="Alex Megos">Alex Megos (GER)</option>
+              <option value="Adam Ondra">Adam Ondra (CZE)</option>
+              <option value="Tomoa Narasaki">Tomoa Narasaki (JPN)</option>
+            </select>
+            <div class="admin-score-grid">
+              <div class="admin-score-input-wrap">
+                <label for="adminMenTops">TOPS (T)</label>
+                <input type="number" id="adminMenTops" min="0" max="4" placeholder="0" required />
+              </div>
+              <div class="admin-score-input-wrap">
+                <label for="adminMenAttTop">ATT. TOPS</label>
+                <input type="number" id="adminMenAttTop" min="0" max="40" placeholder="0" required />
+              </div>
+              <div class="admin-score-input-wrap">
+                <label for="adminMenZones">ZONE (Z)</label>
+                <input type="number" id="adminMenZones" min="0" max="4" placeholder="0" required />
+              </div>
+              <div class="admin-score-input-wrap">
+                <label for="adminMenAttZone">ATT. ZONE</label>
+                <input type="number" id="adminMenAttZone" min="0" max="40" placeholder="0" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-calc-actions">
+            <button type="submit" id="calculateWinnersBtn" class="admin-calc-btn">
+              <span>⚡ CALCULATE POINTS &amp; CROWN WINNERS</span>
+              <b aria-hidden="true">→</b>
+            </button>
+            <button type="button" id="resetResultsBtn" class="admin-reset-results-btn">
+              <span>↺ RESET OFFICIAL RESULTS</span>
+            </button>
+          </div>
+        </form>
       </section>
 
       <!-- Section 3: Live Submissions & Stats -->
-      <section class="admin-card">
+      <section class="admin-card admin-live-card">
         <div class="admin-card-head">
           <span class="micro-label">LIVE DATA</span>
           <h3>SPECTATOR ENTRIES</h3>
@@ -594,15 +617,15 @@
         <button type="button" id="seedTestBtn" class="admin-seed-btn">🎲 SEED 100 TEST VOTERS</button>
       </section>
 
-      <!-- Section 4: Danger Zone (Safeguarded & Collapsed at Bottom) -->
+      <!-- Section 4: Clear Participant Data (Safeguarded & Collapsed at Bottom) -->
       <details class="admin-danger-zone">
         <summary class="danger-summary">
-          <span class="danger-badge">⚠️ DANGER ZONE</span>
-          <span class="danger-toggle-text">RESET OPTIONS ▾</span>
+          <span class="danger-badge">🗑️ PARTICIPANTS DATA</span>
+          <span class="danger-toggle-text">CLEAR ENTRIES ▾</span>
         </summary>
         <div class="danger-body">
-          <p class="danger-warning">Irreversible: Permanently wipes all predictions, resets champion and raffle winner. Requires typing <code>RESET</code> to confirm.</p>
-          <button type="button" id="clearData" class="btn-clear-data">DELETE ALL EVENT DATA</button>
+          <p class="danger-warning">Permanently deletes all spectator votes and predictions. Official results and tournament champions remain untouched.</p>
+          <button type="button" id="clearData" class="btn-clear-data">DELETE PARTICIPANTS ONLY</button>
         </div>
       </details>
 
@@ -616,6 +639,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=3.3"></script>
+  <script src="app.js?v=5.3"></script>
 </body>
 </html>
