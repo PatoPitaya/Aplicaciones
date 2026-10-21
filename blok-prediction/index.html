@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=Permanent+Marker&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5.4" />
+  <link rel="stylesheet" href="styles.css?v=5.9" />
   <link rel="stylesheet" href="contact.css?v=2.9" />
 </head>
 <body>
@@ -162,7 +162,7 @@
             <!-- 1. Chosen Athlete Name First -->
             <div class="score-card-top">
               <span class="score-athlete-label">SELECTED ATHLETE</span>
-              <h2 id="scoreWomanTargetName" class="score-athlete-name">JANJA GARNBRET</h2>
+              <h2 id="scoreWomanTargetName" class="score-athlete-name">WOMEN'S CHAMPION</h2>
             </div>
 
             <!-- 2. Score Badge + 3. 4 Boulders Tag -->
@@ -305,7 +305,7 @@
             <!-- 1. Chosen Athlete Name First -->
             <div class="score-card-top">
               <span class="score-athlete-label">SELECTED ATHLETE</span>
-              <h2 id="scoreManTargetName" class="score-athlete-name">ADAM ONDRA</h2>
+              <h2 id="scoreManTargetName" class="score-athlete-name">MEN'S CHAMPION</h2>
             </div>
 
             <!-- 2. Score Badge + 3. 4 Boulders Tag -->
@@ -406,13 +406,13 @@
               <span class="receipt-label">PARTICIPANT</span>
               <b class="receipt-value" id="successName">Participant</b>
             </div>
-            <div class="receipt-row">
+            <div class="receipt-row receipt-row-women">
               <span class="receipt-label">WOMEN'S PICK</span>
-              <b class="receipt-value highlight-accent" id="successWomenPick">—</b>
+              <b class="receipt-value receipt-val-women highlight-accent" id="successWomenPick">—</b>
             </div>
-            <div class="receipt-row">
+            <div class="receipt-row receipt-row-men">
               <span class="receipt-label">MEN'S PICK</span>
-              <b class="receipt-value highlight-accent" id="successMenPick">—</b>
+              <b class="receipt-value receipt-val-men highlight-accent" id="successMenPick">—</b>
             </div>
             <div class="receipt-footer">
               <span>KLIMZAAL BLOK</span>
@@ -495,6 +495,51 @@
         <button type="button" id="toggleOpen" class="admin-toggle-btn toggle-open">CLOSE PREDICTIONS NOW</button>
       </section>
 
+      <!-- Section 1.5: Finalists Selection (6 Women & 6 Men from 28 Athletes) -->
+      <section class="admin-card admin-roster-card" id="adminRosterCard">
+        <div class="admin-card-head status-card-head">
+          <div>
+            <span class="micro-label">ATHLETES ROSTER</span>
+            <h3>SELECT FINALISTS</h3>
+          </div>
+          <div class="roster-head-actions">
+            <button type="button" id="resetRosterBtn" class="btn-roster-reset" title="Deselect all to pick one by one">↺ DESELECT ALL</button>
+            <span id="rosterStatusBadge" class="status-badge pending">0 / 12</span>
+          </div>
+        </div>
+        <p class="admin-card-sub">Choose the 6 women and 6 men who qualified from the semi-finals. Select them one by one from the qualification roster below.</p>
+
+        <!-- Women Finalists Roster Selector -->
+        <div class="admin-category-card admin-cat-women roster-cat-card">
+          <div class="admin-category-header">
+            <div class="admin-tape-banner tape-yellow-banner">
+              <span>WOMEN FINALISTS</span>
+            </div>
+            <span class="admin-cat-badge badge-dim" id="adminWomenSelectedCount">0 / 6 (PICK 6)</span>
+          </div>
+          <div class="admin-roster-grid" id="adminWomenRosterGrid"></div>
+        </div>
+
+        <!-- Men Finalists Roster Selector -->
+        <div class="admin-category-card admin-cat-men roster-cat-card">
+          <div class="admin-category-header">
+            <div class="admin-tape-banner tape-pink-banner">
+              <span>MEN FINALISTS</span>
+            </div>
+            <span class="admin-cat-badge badge-dim" id="adminMenSelectedCount">0 / 6 (PICK 6)</span>
+          </div>
+          <div class="admin-roster-grid" id="adminMenRosterGrid"></div>
+        </div>
+
+        <div class="admin-calc-actions">
+          <button type="button" id="saveFinalistsBtn" class="admin-calc-btn">
+            <span>⚡ PUBLISH &amp; LOCK 12 FINALISTS</span>
+            <b aria-hidden="true">→</b>
+          </button>
+        </div>
+        <p id="adminRosterMessage" class="form-message" role="status"></p>
+      </section>
+
       <!-- Section 2: Official Finals Results (Women First) -->
       <section class="admin-card admin-results-card">
         <div class="admin-card-head status-card-head">
@@ -518,11 +563,6 @@
             </div>
             <select id="adminWomenWinner" class="admin-select select-women" required>
               <option value="" disabled selected>Select Women's Champion...</option>
-              <option value="Chloé Caulier">Chloé Caulier (BEL)</option>
-              <option value="Janja Garnbret">Elfe Claes (SLO)</option>
-              <option value="Laura Rogora">Laura Rogora (ITA)</option>
-              <option value="Oriane Bertone">Oriane Bertone (FRA)</option>
-              <option value="Ai Mori">Ai Mori (JPN)</option>
             </select>
             <div class="admin-score-grid">
               <div class="admin-score-input-wrap">
@@ -554,11 +594,6 @@
             </div>
             <select id="adminMenWinner" class="admin-select select-men" required>
               <option value="" disabled selected>Select Men's Champion...</option>
-              <option value="Hannes Van Duysen">Hannes Van Duysen (BEL)</option>
-              <option value="Simon Lorenzi">Simon Lorenzi (BEL)</option>
-              <option value="Alex Megos">Alex Megos (GER)</option>
-              <option value="Adam Ondra">Adam Ondra (CZE)</option>
-              <option value="Tomoa Narasaki">Tomoa Narasaki (JPN)</option>
             </select>
             <div class="admin-score-grid">
               <div class="admin-score-input-wrap">
@@ -639,6 +674,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=5.4"></script>
+  <script src="app.js?v=5.9"></script>
 </body>
 </html>

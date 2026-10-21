@@ -29,17 +29,17 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
 
 6. **Linear & Clean Sequential Prediction Flow (WOMEN FIRST):**
    - **Step 0 (Details modal):** Participant enters Full Name with `#ffffff` text on solid `#0a0309` cards.
-   - **Step 1 (Pick Women's Champion):** Focused view displaying the 5 Women finalists (`Chloé Caulier`, `Janja Garnbret`, `Laura Rogora`, `Oriane Bertone`, `Ai Mori`). Tap to select, then click `"NEXT: SET HER SCORE →"`.
+   - **Step 1 (Pick Women's Champion):** Focused view displaying the 6 Women finalists dynamically chosen by the organizer. Tap to select, then click `"NEXT: SET HER SCORE →"`.
    - **Step 2 (Women's IFSC Score - Hero Scorecard):** Large, elegant scorecard displaying:
-     1. Athlete's chosen name first in large poster type (`JANJA GARNBRET`),
+     1. Athlete's chosen name first in large poster type,
      2. Live predicted score badge (`4T4 4Z4`),
      3. Official `4 BOULDERS` competition badge,
      4. High-contrast tactile pills for Tops (0..4), Zones (0..4), and attempts steppers.
      5. Redundant instruction sentences eliminated.
      Click `"NEXT: PICK MEN'S CHAMPION →"`.
-   - **Step 3 (Pick Men's Champion):** Focused view displaying the 5 Men finalists (`Hannes Van Duysen`, `Simon Lorenzi`, `Alex Megos`, `Adam Ondra`, `Tomoa Narasaki`). Tap to select, then click `"NEXT: SET HIS SCORE →"`.
+   - **Step 3 (Pick Men's Champion):** Focused view displaying the 6 Men finalists dynamically chosen by the organizer. Tap to select, then click `"NEXT: SET HIS SCORE →"`.
    - **Step 4 (Men's IFSC Score - Hero Scorecard):** Large, elegant scorecard displaying:
-     1. Athlete's chosen name first in large poster type (`ADAM ONDRA`),
+     1. Athlete's chosen name first in large poster type,
      2. Live predicted score badge (`3T6 4Z5`),
      3. Official `4 BOULDERS` competition badge,
      4. High-contrast tactile pills for Tops (0..4), Zones (0..4), and attempts steppers.
@@ -47,12 +47,13 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
    - **Confirmation Receipt:** Displays Women's Pick first and Men's Pick second.
    - **Full Back Navigation:** Each step has a functioning `← BACK` button preserving previous choices.
 7. **Organized & Minimalist Admin Panel:**
-   - Clean, modular structure: Section 1 (Event Control & Betting Status), Section 2 (Official Finals Results Form & Calculation), Section 3 (Live Entries Feed & Statistics with one-click 100 test voter seed), and Section 4 (Safe collapsible participant records deletion).
+   - Clean, modular structure: Section 1 (Event Control & Betting Status), Section 1.5 (Athletes Roster & Finalists Selection: 6 Women + 6 Men chosen from the 28 qualification competitors), Section 2 (Official Finals Results Form & Calculation), Section 3 (Live Entries Feed & Statistics with one-click 100 test voter seed), and Section 4 (Safe collapsible participant records deletion).
+   - **Dynamic Finalists Selection (12 Finalists):** Master catalog of 28 athletes (12 Women, 16 Men) grouped by country. In the organizer console (Section 1.5), athletes start completely **deselected** (`0 / 6 SELECTED`) so organizers can choose the 6 female and 6 male finalists one by one with live progress counters. Includes a quick `"↺ DESELECT ALL"` button to reset all selections from scratch at any moment. Clicking `"⚡ PUBLISH & LOCK 12 FINALISTS"` locks the selection, updates the spectator voting pools, the admin results dropdowns, and syncs across devices via `localStorage` and Supabase `active_finalists`.
    - **Instant Optimistic Toggling:** The predictions toggle button (`#toggleOpen`) updates the UI instantly (turning the status badge and button red for closed, yellow for open) with zero latency, and syncs to Supabase in the background. Gating `!isAdmin` check and blocking `window.confirm` dialogs removed.
    - **Safe Data Reset:** `#clearData` relocated to the very bottom inside a closed `<details class="admin-danger-zone">` to prevent accidental data wipes.
 8. **Test Mode (Name-Only & 100 Seeded Voters):**
    - **Name-Only Voting:** Form simplified to ask only for Full Name (email and phone hidden/optional). No duplicate blocking — users can submit multiple votes for testing without restrictions.
-   - **100 Seeded Predictions:** Database populated with 100 realistic community votes distributed across the 10 finalists (Janja ~25%, Toby ~18%, Hannes ~17%, Sorato ~12%, Oriane ~9%, etc.), ready for testing the winner publication, crowd odds scoreboard, and dual IFSC points ranking.
+   - **100 Seeded Predictions:** Database populated with 100 realistic community votes distributed across the active finalists, ready for testing the winner publication, crowd odds scoreboard, and dual IFSC points ranking.
 9. **Strict Copywriting & Street Tone (DO NOT TOUCH):**
    - The user specifically authored the current wording in a casual, punchy street/urban climbing tone (`WHO WILL WIN tonight's FINALs?`, `PLACE YOUR BETS`, `FAN FAVORITES`, `NEXT`, `YOUR first and last NAME`, etc.).
    - **MANDATE:** Do NOT alter, rewrite, or touch any text, wording, or titles. Keep all copy verbatim as the user left it.
@@ -94,16 +95,30 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
     - **Native Edge-Swipe & Browser Back**: `popstate` event intercepts backward gestures on iOS Safari and Android Chrome, returning to the previous view within the SPA without exiting or closing the website.
     - **Touch Swipe-Right Detection**: Global `touchstart`/`touchend` listeners and a dedicated listener on `adminPanel` detect horizontal right-swipes, triggering smooth backward view transitions or closing the admin drawer if open.
     - **Overscroll Lock & Touch Action**: `overscroll-behavior: none` and `touch-action: pan-y` on `html, body, .app-frame, .admin-panel` disable destructive pull-to-refresh and horizontal navigation rubber-banding in mobile browsers.
-14. **Contest Leaderboard — Authentic Bouldering Cards + Neon Yellow Winners (CONTEST LEADERBOARD screen):**
-    - **Aesthetic integrity:** Preserves the original bouldering card aesthetic (dark card container with offset brutalist shadows, brand typography, yellow cards) without stripping the UI framework.
+14. **Contest Leaderboard — Authentic Bouldering Cards + Dusty Chalk-White Winners with Solo Crown (CONTEST LEADERBOARD screen):**
+    - **Aesthetic integrity:** Preserves the original bouldering card aesthetic (dark card container with offset brutalist shadows, brand typography) without stripping the UI framework.
     - **Specific modifications applied:**
       1. **Official Boulder Champions (`.champions-grid`):** "FINALS CHAMPIONS" / "OFFICIAL BOULDER CHAMPIONS" tape tag removed. Champions displayed in two yellow boxes (`.champ-box`) with soft yellow neon glow and realistic climbing chalk/magnesium dust hand-smudges (`radial-gradient` white dust streaks). Each climber's name is on physical athletic finger-tape (`.champ-name-tape`, tilted with micro-weave cloth texture, dashed cuts, and chalk thumbprints spilling onto the yellow box) and their official IFSC score pill (`.champ-score-pill`, `4T4 4Z4`) clearly visible below.
-      2. **Contest Winners (`.podium-card`):** Preserves the classic yellow podium card with soft yellow neon glow and authentic climbing chalk hand-smudges. Multiple winners are rendered as separate individual cards ("los nombres haslos aparte"). Each card prominently features the winner's name on large finger-tape (`.podium-name-tape`), their total points (`.podium-points`, `270 PTS / 270`), and their full predicted IFSC scores and points breakdown (`.podium-scores-grid`) for Women (Yellow) and Men (Mauve/Pink).
+      2. **Contest Winners (`.podium-card.podium-chalk`):** Rendered in a dusty bouldering chalk-white tone (`#f3f0ea` with multi-radial magnesium chalk smudges, dark border, and bright chalk halo shadow) instead of yellow, distinguishing spectators who won the prediction contest from the yellow champions on the wall. Directly above and overlapping the upper edge of the winner's finger-tape sits a hand-drawn urban street-art crown (`.urban-crown-svg`, `.podium-crown`) tilted slightly ("un poco ladeada", `rotate(-8deg)` with gentle floating tilt animation), styled like a Posca chalk marker graffiti doodle with thick ink strokes, 3 peaks with dots, and Posca white highlights, with **no letters or text tags** whatsoever. Contest winner points (`.podium-points b`) are prominently rendered in **Tape Yellow** (`var(--tape-yellow)` / `#ebd87e`) with subtle neon glow on a solid brutalist black pill. Multiple co-winners are rendered as separate individual cards ("los nombres haslos aparte"). Each card includes their full predicted IFSC scores and points breakdown (`.podium-scores-grid`) for Women (Yellow) and Men (Mauve/Pink).
       3. **Full Participant Leaderboard (`.leaderboard-wrap`):** Preserves the authentic dark card container with border and brutalist offset shadow. In each `.lb-entry`, Men's pick is placed directly **below** Women's pick:
          - **Women (`.lb-pick-women`):** The `W:` tag and the predicted score (`4T4 4Z4`) are rendered in distinct **Tape Yellow** (`var(--tape-yellow)`).
          - **Men (`.lb-pick-men`):** The `M:` tag and the predicted score (`4T4 4Z5`) are rendered in distinct **Mauve / Pink** (`var(--mauve-bright)`).
          - Neither score gets cut off or truncated on mobile screens, with total points prominently displayed on the right.
       4. **Community Predictions in Fan Favorites View:** When official results are not yet declared (`FAN FAVORITES` view), the crowd odds progress bars for Women and Men are followed by the complete community predictions leaderboard (`COMMUNITY PREDICTIONS`). Participants can scroll down smoothly to see all bets (`W:` and `M:` picks/scores with `[ LOCKED ]` badge). Fixed nested scroll trap by removing restrictive inner `max-height: 520px` from `.leaderboard-list` and enabling hardware-accelerated touch momentum scrolling on `.app-frame`.
+
+15. **Strict Gender Color Coding Across All Views (Women = Tape Yellow, Men = Mauve / Pink):**
+    - **Women Theme (`var(--tape-yellow)` / `#ebd87e`):**
+      - Fan Favorites: `.odds-box-women` container border, `.odds-title-women` title, percentage badges, and all progress bar fills.
+      - Sequential Wizard (Step 1 & 2): `.pick-woman-view` title accents, selected card borders/checkmarks, scorecard predicted badge, 4-boulders tag, active IFSC pills, and attempts stepper values.
+      - Confirmation Receipt: `WOMEN'S PICK` label and confirmed score text (`.receipt-val-women`).
+      - Results & Leaderboard: Women's champion box (`.champ-women`), winner podium women row (`.podium-score-women`), and participant `W:` picks and scores (`.lb-pick-women`).
+      - Organizer Console: Yellow tape banner, yellow status badges, yellow selects, and yellow roster cards.
+    - **Men Theme (`var(--mauve-bright)` / `var(--tape-pink-soft)`):**
+      - Fan Favorites: `.odds-box-men` container border, `.odds-title-men` title, percentage badges, and all progress bar fills.
+      - Sequential Wizard (Step 3 & 4): `.pick-man-view` title accents, selected card borders/checkmarks, scorecard predicted badge, 4-boulders tag, active IFSC pills, and attempts stepper values.
+      - Confirmation Receipt: `MEN'S PICK` label and confirmed score text (`.receipt-val-men`).
+      - Results & Leaderboard: Men's champion box (`.champ-men`), winner podium men row (`.podium-score-men`), and participant `M:` picks and scores (`.lb-pick-men`).
+      - Organizer Console: Pink tape banner, pink status badges, pink selects, and pink roster cards.
 
 ## How to Test Locally
 

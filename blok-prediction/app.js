@@ -28,6 +28,33 @@ const adminAuthMessage = document.querySelector('#adminAuthMessage');
 const appFrame = document.querySelector('#appFrame');
 const seedTestBtn = document.querySelector('#seedTestBtn');
 
+function normalize(value) {
+  return String(value || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
+function getUrbanCrownSvg(width = 68, height = 48) {
+  return `
+    <svg class="urban-crown-svg" width="${width}" height="${height}" viewBox="0 0 72 52" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M 10 44 C 10 44 12 21 14 18 C 17 22 25 31 27 31 C 29 29 34 11 36 7 C 38 11 43 29 45 31 C 47 31 55 22 58 18 C 60 21 62 44 62 44 Z" 
+            fill="#ebd87e" stroke="#140d12" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M 9 36 C 24 38 48 38 63 36" stroke="#140d12" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="14" cy="13" r="4.2" fill="#ebd87e" stroke="#140d12" stroke-width="3"/>
+      <circle cx="36" cy="5" r="4.8" fill="#ebd87e" stroke="#140d12" stroke-width="3"/>
+      <circle cx="58" cy="13" r="4.2" fill="#ebd87e" stroke="#140d12" stroke-width="3"/>
+      <circle cx="23" cy="40.5" r="2.2" fill="#140d12"/>
+      <circle cx="36" cy="41" r="2.5" fill="#140d12"/>
+      <circle cx="49" cy="40.5" r="2.2" fill="#140d12"/>
+      <path d="M 33 13 L 28 24" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M 15 22 L 17 31" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="35" cy="4" r="1.3" fill="#ffffff"/>
+    </svg>
+  `;
+}
+
 let isAdmin = true;
 let state = readLocalState();
 let pendingParticipant = null;
@@ -38,23 +65,112 @@ let draftPick = {
   men: { climber: '', tops: 3, zones: 4, att_top: 6, att_zone: 5, scoreStr: '3T6 4Z5' }
 };
 
-// Official Finals Roster (WOMEN FIRST, then MEN)
-const FINALISTS = {
+// ================= MASTER ATHLETES POOL (28 COMPETITORS: 12 WOMEN + 16 MEN) =================
+const ALL_COMPETITORS = {
   women: [
-    { bib: '01', name: 'Chloé Caulier', country: 'BELGIUM', extra: 'BLOK FINALIST' },
-    { bib: '02', name: 'Janja Garnbret', country: 'SLOVENIA', extra: 'BLOK FINALIST' },
-    { bib: '03', name: 'Laura Rogora', country: 'ITALY', extra: 'BLOK FINALIST' },
-    { bib: '04', name: 'Oriane Bertone', country: 'FRANCE', extra: 'BLOK FINALIST' },
-    { bib: '05', name: 'Ai Mori', country: 'JAPAN', extra: 'BLOK FINALIST' }
+    { id: 'w_cuypers',     name: 'Celine Cuypers',        country: 'BELGIUM',        code: 'BEL', flag: '🇧🇪' },
+    { id: 'w_alardin',     name: 'Perrine Alardin',       country: 'BELGIUM',        code: 'BEL', flag: '🇧🇪' },
+    { id: 'w_lerondel',    name: 'Amie Lerondel',         country: 'FRANCE',         code: 'FRA', flag: '🇫🇷' },
+    { id: 'w_cohaut',      name: 'Flavy Cohaut',          country: 'FRANCE',         code: 'FRA', flag: '🇫🇷' },
+    { id: 'w_piazzalunga', name: 'Maïlys Piazzalunga',    country: 'FRANCE',         code: 'FRA', flag: '🇫🇷' },
+    { id: 'w_tesio',       name: 'Giorgia Tesio',         country: 'ITALY',          code: 'ITA', flag: '🇮🇹' },
+    { id: 'w_daziano',     name: 'Irina Daziano',         country: 'ITALY',          code: 'ITA', flag: '🇮🇹' },
+    { id: 'w_schiffeleers',name: 'Amber Schiffeleers',    country: 'NETHERLANDS',    code: 'NED', flag: '🇳🇱' },
+    { id: 'w_hamers',      name: 'Bibi Hamers',           country: 'NETHERLANDS',    code: 'NED', flag: '🇳🇱' },
+    { id: 'w_havermans',   name: 'Geke Havermans',        country: 'NETHERLANDS',    code: 'NED', flag: '🇳🇱' },
+    { id: 'w_hovde',       name: 'Nora Hovde',            country: 'NORWAY',         code: 'NOR', flag: '🇳🇴' },
+    { id: 'w_tvedt',       name: 'Pernille Tvedt',        country: 'NORWAY',         code: 'NOR', flag: '🇳🇴' }
   ],
   men: [
-    { bib: '01', name: 'Hannes Van Duysen', country: 'BELGIUM', extra: 'BLOK FINALIST' },
-    { bib: '02', name: 'Simon Lorenzi', country: 'BELGIUM', extra: 'BLOK FINALIST' },
-    { bib: '03', name: 'Alex Megos', country: 'GERMANY', extra: 'BLOK FINALIST' },
-    { bib: '04', name: 'Adam Ondra', country: 'CZECH REP.', extra: 'BLOK FINALIST' },
-    { bib: '05', name: 'Tomoa Narasaki', country: 'JAPAN', extra: 'BLOK FINALIST' }
+    { id: 'm_laporte',     name: 'Corentin Laporte',      country: 'BELGIUM',        code: 'BEL', flag: '🇧🇪' },
+    { id: 'm_pesseroey',   name: 'Dries De Pesseroey',    country: 'BELGIUM',        code: 'BEL', flag: '🇧🇪' },
+    { id: 'm_cocquyt',     name: 'Jasper Cocquyt',        country: 'BELGIUM',        code: 'BEL', flag: '🇧🇪' },
+    { id: 'm_vangorp',     name: 'Mathijs Van Gorp',      country: 'BELGIUM',        code: 'BEL', flag: '🇧🇪' },
+    { id: 'm_lebris',      name: 'Arthur Le Bris',        country: 'FRANCE',         code: 'FRA', flag: '🇫🇷' },
+    { id: 'm_rebollo',     name: 'Arthur Rebollo',        country: 'FRANCE',         code: 'FRA', flag: '🇫🇷' },
+    { id: 'm_macdougall',  name: 'Jack MacDougall',       country: 'GREAT BRITAIN',  code: 'GBR', flag: '🇬🇧' },
+    { id: 'm_villatoro',   name: 'Keanu Villatoro',       country: 'GUATEMALA',      code: 'GTM', flag: '🇬🇹' },
+    { id: 'm_salvatore_m', name: 'Mattia Salvatore',      country: 'ITALY',          code: 'ITA', flag: '🇮🇹' },
+    { id: 'm_salvatore_n', name: 'Niccolo Salvatore',     country: 'ITALY',          code: 'ITA', flag: '🇮🇹' },
+    { id: 'm_sacripanti',  name: 'Nicolo Sacripanti',     country: 'ITALY',          code: 'ITA', flag: '🇮🇹' },
+    { id: 'm_sartirana',   name: 'Nicolo Sartirana',      country: 'ITALY',          code: 'ITA', flag: '🇮🇹' },
+    { id: 'm_mabboni',     name: 'Simone Mabboni',        country: 'ITALY',          code: 'ITA', flag: '🇮🇹' },
+    { id: 'm_brand',       name: 'Paul Brand',            country: 'NETHERLANDS',    code: 'NED', flag: '🇳🇱' },
+    { id: 'm_peharc',      name: 'Anze Peharc',           country: 'SLOVENIA',       code: 'SLO', flag: '🇸🇮' },
+    { id: 'm_romsak',      name: 'Timotej Romsak',        country: 'SLOVENIA',       code: 'SLO', flag: '🇸🇮' }
   ]
 };
+
+const DEFAULT_FINALIST_NAMES = {
+  women: [
+    'Celine Cuypers',
+    'Perrine Alardin',
+    'Amie Lerondel',
+    'Flavy Cohaut',
+    'Giorgia Tesio',
+    'Bibi Hamers'
+  ],
+  men: [
+    'Corentin Laporte',
+    'Jasper Cocquyt',
+    'Arthur Le Bris',
+    'Niccolo Salvatore',
+    'Anze Peharc',
+    'Paul Brand'
+  ]
+};
+
+function buildFinalistsObject(womenNames, menNames) {
+  const getCompetitor = (gender, name) => {
+    const found = ALL_COMPETITORS[gender].find(c => normalize(c.name) === normalize(name));
+    if (found) return found;
+    return { name, country: 'INTERNATIONAL', code: 'INT', flag: '🧗' };
+  };
+
+  return {
+    women: (womenNames || []).slice(0, 6).map((name, idx) => {
+      const c = getCompetitor('women', name);
+      return {
+        bib: String(idx + 1).padStart(2, '0'),
+        name: c.name,
+        country: c.country,
+        code: c.code,
+        flag: c.flag,
+        extra: 'BLOK FINALIST'
+      };
+    }),
+    men: (menNames || []).slice(0, 6).map((name, idx) => {
+      const c = getCompetitor('men', name);
+      return {
+        bib: String(idx + 1).padStart(2, '0'),
+        name: c.name,
+        country: c.country,
+        code: c.code,
+        flag: c.flag,
+        extra: 'BLOK FINALIST'
+      };
+    })
+  };
+}
+
+function loadActiveFinalists() {
+  try {
+    const raw = localStorage.getItem('blok_active_finalists');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.women) && Array.isArray(parsed?.men) && parsed.women.length === 6 && parsed.men.length === 6) {
+        return buildFinalistsObject(parsed.women, parsed.men);
+      }
+    }
+  } catch (e) {
+    console.warn('Could not load saved finalists from localStorage', e);
+  }
+  return buildFinalistsObject(DEFAULT_FINALIST_NAMES.women, DEFAULT_FINALIST_NAMES.men);
+}
+
+// Active Finals Roster (Dynamic 6 Women + 6 Men)
+let FINALISTS = loadActiveFinalists();
+let adminRosterDraft = { women: new Set(), men: new Set() };
 
 function isValidWinnerString(raw) {
   if (!raw || typeof raw !== 'string') return false;
@@ -106,9 +222,6 @@ function readLocalState() {
     predictionsOpen: true 
   };
 }
-
-const normalize = (value) => String(value || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 // ================= IFSC VALIDATION & SANITIZATION ENGINE =================
 /**
@@ -733,8 +846,8 @@ function renderPublicResults() {
     const podiumWinners = ranked.filter((r) => r.isWinner);
 
     // 1. Official Boulder Champions (Yellow boxes with soft yellow neon, name on tape, score below)
-    const champBox = (role, pick) => `
-      <div class="champ-box">
+    const champBox = (role, pick, genderClass) => `
+      <div class="champ-box ${genderClass}">
         <span class="champ-role">${role}</span>
         <b class="champ-name-tape">${escapeHtml(pick?.climber || 'TBD')}</b>
         <span class="champ-score-pill">${escapeHtml(pick?.scoreStr || '—')}</span>
@@ -743,44 +856,41 @@ function renderPublicResults() {
 
     html += `
       <div class="champions-grid">
-        ${champBox("WOMEN'S CHAMPION", official.women)}
-        ${champBox("MEN'S CHAMPION", official.men)}
+        ${champBox("WOMEN'S CHAMPION", official.women, "champ-women")}
+        ${champBox("MEN'S CHAMPION", official.men, "champ-men")}
       </div>
     `;
 
     // 2. Contest Winners Podium (Names separate, big chalk-smudged tape, total points + predicted IFSC scores)
     if (podiumWinners.length > 0) {
-      html += podiumWinners.map((w) => {
-        const winnerTag = podiumWinners.length > 1 ? '👑 #1 CO-WINNER' : '👑 #1 CONTEST WINNER';
-        return `
-          <div class="podium-card podium-neon">
-            <span class="podium-tag">${winnerTag}</span>
-            <div class="podium-name-tape">${escapeHtml(w.entry.name)}</div>
-            <div class="podium-points">
-              <b>${w.totalPoints}</b>
-              <span>PTS / 270</span>
+      html += podiumWinners.map((w) => `
+        <div class="podium-card podium-chalk">
+          <div class="podium-crown" aria-label="Winner Crown">${getUrbanCrownSvg()}</div>
+          <div class="podium-name-tape">${escapeHtml(w.entry.name)}</div>
+          <div class="podium-points">
+            <b>${w.totalPoints}</b>
+            <span>PTS / 270</span>
+          </div>
+          <div class="podium-scores-grid">
+            <div class="podium-score-row podium-score-women ${w.womenScore.winnerMatch ? 'is-match' : ''}">
+              <span class="podium-score-tag">WOMEN</span>
+              <span class="podium-score-climber">${escapeHtml(w.pred?.women?.climber || '—')}</span>
+              <span class="podium-score-val">${escapeHtml(w.pred?.women?.scoreStr || '—')}</span>
+              <span class="podium-score-pts">+${w.womenScore.total} PTS</span>
             </div>
-            <div class="podium-scores-grid">
-              <div class="podium-score-row podium-score-women ${w.womenScore.winnerMatch ? 'is-match' : ''}">
-                <span class="podium-score-tag">WOMEN</span>
-                <span class="podium-score-climber">${escapeHtml(w.pred?.women?.climber || '—')}</span>
-                <span class="podium-score-val">${escapeHtml(w.pred?.women?.scoreStr || '—')}</span>
-                <span class="podium-score-pts">+${w.womenScore.total} PTS</span>
-              </div>
-              <div class="podium-score-row podium-score-men ${w.menScore.winnerMatch ? 'is-match' : ''}">
-                <span class="podium-score-tag">MEN</span>
-                <span class="podium-score-climber">${escapeHtml(w.pred?.men?.climber || '—')}</span>
-                <span class="podium-score-val">${escapeHtml(w.pred?.men?.scoreStr || '—')}</span>
-                <span class="podium-score-pts">+${w.menScore.total} PTS</span>
-              </div>
+            <div class="podium-score-row podium-score-men ${w.menScore.winnerMatch ? 'is-match' : ''}">
+              <span class="podium-score-tag">MEN</span>
+              <span class="podium-score-climber">${escapeHtml(w.pred?.men?.climber || '—')}</span>
+              <span class="podium-score-val">${escapeHtml(w.pred?.men?.scoreStr || '—')}</span>
+              <span class="podium-score-pts">+${w.menScore.total} PTS</span>
             </div>
           </div>
-        `;
-      }).join('');
+        </div>
+      `).join('');
     } else {
       html += `
-        <div class="podium-card podium-neon is-empty">
-          <span class="podium-tag">👑 CONTEST WINNER</span>
+        <div class="podium-card podium-chalk is-empty">
+          <div class="podium-crown" aria-label="Crown">${getUrbanCrownSvg(56, 40)}</div>
           <h4 class="podium-empty-title">NO PARTICIPANT HIT A CHAMPION</h4>
           <p class="podium-empty-note">To win, a participant must match at least one champion. Check the full ranking below!</p>
         </div>
@@ -842,16 +952,16 @@ function renderPublicResults() {
     const crowd = getCrowdStats();
     if (crowd.total > 0) {
       html += `
-        <div class="odds-box">
+        <div class="odds-box odds-box-women">
           <div class="odds-header">
-            <span class="odds-title">WOMEN'S FINALS FAVORITES</span>
+            <span class="odds-title odds-title-women">WOMEN'S FINALS FAVORITES</span>
             <span class="odds-total">${crowd.total} total bets</span>
           </div>
           ${crowd.womenList.map((item) => `
             <div class="odds-item">
               <div class="odds-labels">
                 <span>${escapeHtml(item.name)}</span>
-                <span>${item.pct}% (${item.count})</span>
+                <span class="odds-pct">${item.pct}% (${item.count})</span>
               </div>
               <div class="odds-bar-track">
                 <div class="odds-bar-fill" style="width: ${item.pct}%"></div>
@@ -860,16 +970,16 @@ function renderPublicResults() {
           `).join('')}
         </div>
 
-        <div class="odds-box">
+        <div class="odds-box odds-box-men">
           <div class="odds-header">
-            <span class="odds-title">MEN'S FINALS FAVORITES</span>
+            <span class="odds-title odds-title-men">MEN'S FINALS FAVORITES</span>
             <span class="odds-total">${crowd.total} total bets</span>
           </div>
           ${crowd.menList.map((item) => `
             <div class="odds-item">
               <div class="odds-labels">
                 <span>${escapeHtml(item.name)}</span>
-                <span>${item.pct}% (${item.count})</span>
+                <span class="odds-pct">${item.pct}% (${item.count})</span>
               </div>
               <div class="odds-bar-track">
                 <div class="odds-bar-fill" style="width: ${item.pct}%"></div>
@@ -1006,6 +1116,7 @@ function render() {
   }
 
   renderPublicResults();
+  renderAdminFinalistOptions();
   updateAdminUi();
 }
 
@@ -1024,6 +1135,11 @@ function setPanel(open, pushHistory = true) {
   scrim.hidden = !open;
   document.querySelector('#adminToggle').setAttribute('aria-expanded', String(open));
   document.body.style.overflow = open ? 'hidden' : '';
+
+  if (open) {
+    renderAdminRosterSelection();
+    renderAdminFinalistOptions();
+  }
 
   if (open && !wasOpen) {
     if (pushHistory) {
@@ -1058,6 +1174,21 @@ async function loadRemoteState() {
   const remoteWinner = settingsResponse.data?.official_winner || '';
   const parsedRemote = parseOfficialWinner(remoteWinner);
   const isValidRemoteWinner = Boolean(parsedRemote && (parsedRemote.women?.climber || parsedRemote.men?.climber));
+
+  // Remote active finalists sync
+  if (settingsResponse.data?.active_finalists) {
+    try {
+      const parsedFinalists = typeof settingsResponse.data.active_finalists === 'string'
+        ? JSON.parse(settingsResponse.data.active_finalists)
+        : settingsResponse.data.active_finalists;
+      if (Array.isArray(parsedFinalists?.women) && Array.isArray(parsedFinalists?.men) && parsedFinalists.women.length === 6 && parsedFinalists.men.length === 6) {
+        FINALISTS = buildFinalistsObject(parsedFinalists.women, parsedFinalists.men);
+        localStorage.setItem('blok_active_finalists', JSON.stringify({ women: parsedFinalists.women, men: parsedFinalists.men }));
+      }
+    } catch (e) {
+      console.warn('Could not parse remote active_finalists', e);
+    }
+  }
 
   state = {
     entries: (predictionsResponse.data || []).map((item) => ({
@@ -1223,6 +1354,238 @@ if (confirmPredictionBtn) {
       showView('success');
     } finally {
       setSubmitting(confirmPredictionBtn, false);
+    }
+  });
+}
+
+// ================= ADMIN: FINALISTS SELECTION (6 WOMEN & 6 MEN) =================
+function initAdminRosterDraft(loadCurrent = false) {
+  if (loadCurrent) {
+    adminRosterDraft.women = new Set(FINALISTS.women.map((w) => w.name));
+    adminRosterDraft.men = new Set(FINALISTS.men.map((m) => m.name));
+  } else {
+    adminRosterDraft.women.clear();
+    adminRosterDraft.men.clear();
+  }
+}
+
+function renderAdminFinalistOptions() {
+  const adminWomenWinner = document.querySelector('#adminWomenWinner');
+  const adminMenWinner = document.querySelector('#adminMenWinner');
+
+  if (adminWomenWinner) {
+    const currentVal = adminWomenWinner.value;
+    adminWomenWinner.innerHTML = `
+      <option value="" disabled ${!currentVal ? 'selected' : ''}>Select Women's Champion...</option>
+      ${FINALISTS.women.map((w) => `
+        <option value="${escapeHtml(w.name)}" ${w.name === currentVal ? 'selected' : ''}>
+          ${escapeHtml(w.flag || '')} ${escapeHtml(w.name)} (${escapeHtml(w.code || w.country)})
+        </option>
+      `).join('')}
+    `;
+  }
+
+  if (adminMenWinner) {
+    const currentVal = adminMenWinner.value;
+    adminMenWinner.innerHTML = `
+      <option value="" disabled ${!currentVal ? 'selected' : ''}>Select Men's Champion...</option>
+      ${FINALISTS.men.map((m) => `
+        <option value="${escapeHtml(m.name)}" ${m.name === currentVal ? 'selected' : ''}>
+          ${escapeHtml(m.flag || '')} ${escapeHtml(m.name)} (${escapeHtml(m.code || m.country)})
+        </option>
+      `).join('')}
+    `;
+  }
+}
+
+function renderAdminRosterSelection() {
+  const womenGrid = document.querySelector('#adminWomenRosterGrid');
+  const menGrid = document.querySelector('#adminMenRosterGrid');
+  const womenCountEl = document.querySelector('#adminWomenSelectedCount');
+  const menCountEl = document.querySelector('#adminMenSelectedCount');
+  const rosterStatusBadge = document.querySelector('#rosterStatusBadge');
+
+  const wCount = adminRosterDraft.women.size;
+  const mCount = adminRosterDraft.men.size;
+
+  if (womenCountEl) {
+    if (wCount === 6) {
+      womenCountEl.textContent = '6 / 6 SELECTED';
+      womenCountEl.className = 'admin-cat-badge badge-yellow';
+    } else if (wCount < 6) {
+      womenCountEl.textContent = `${wCount} / 6 (PICK ${6 - wCount} MORE)`;
+      womenCountEl.className = 'admin-cat-badge badge-dim';
+    } else {
+      womenCountEl.textContent = `${wCount} / 6 (REMOVE ${wCount - 6})`;
+      womenCountEl.className = 'admin-cat-badge badge-error';
+    }
+  }
+
+  if (menCountEl) {
+    if (mCount === 6) {
+      menCountEl.textContent = '6 / 6 SELECTED';
+      menCountEl.className = 'admin-cat-badge badge-pink';
+    } else if (mCount < 6) {
+      menCountEl.textContent = `${mCount} / 6 (PICK ${6 - mCount} MORE)`;
+      menCountEl.className = 'admin-cat-badge badge-dim';
+    } else {
+      menCountEl.textContent = `${mCount} / 6 (REMOVE ${mCount - 6})`;
+      menCountEl.className = 'admin-cat-badge badge-error';
+    }
+  }
+
+  if (rosterStatusBadge) {
+    if (wCount === 6 && mCount === 6) {
+      rosterStatusBadge.textContent = '12 READY';
+      rosterStatusBadge.className = 'status-badge open';
+    } else {
+      rosterStatusBadge.textContent = `${wCount + mCount} / 12`;
+      rosterStatusBadge.className = 'status-badge pending';
+    }
+  }
+
+  if (womenGrid) {
+    womenGrid.innerHTML = ALL_COMPETITORS.women.map((c) => {
+      const isSelected = adminRosterDraft.women.has(c.name);
+      return `
+        <button type="button" class="roster-athlete-item ${isSelected ? 'is-selected' : ''}" data-roster-gender="women" data-roster-name="${escapeHtml(c.name)}">
+          <div class="roster-athlete-info">
+            <span class="roster-athlete-name">${escapeHtml(c.name)}</span>
+            <span class="roster-athlete-meta">${escapeHtml(c.flag)} ${escapeHtml(c.code)}</span>
+          </div>
+          <span class="roster-athlete-check">${isSelected ? '✓' : ''}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  if (menGrid) {
+    menGrid.innerHTML = ALL_COMPETITORS.men.map((c) => {
+      const isSelected = adminRosterDraft.men.has(c.name);
+      return `
+        <button type="button" class="roster-athlete-item ${isSelected ? 'is-selected' : ''}" data-roster-gender="men" data-roster-name="${escapeHtml(c.name)}">
+          <div class="roster-athlete-info">
+            <span class="roster-athlete-name">${escapeHtml(c.name)}</span>
+            <span class="roster-athlete-meta">${escapeHtml(c.flag)} ${escapeHtml(c.code)}</span>
+          </div>
+          <span class="roster-athlete-check">${isSelected ? '✓' : ''}</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  document.querySelectorAll('[data-roster-name]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const gender = btn.dataset.rosterGender;
+      const name = btn.dataset.rosterName;
+      const rosterMessage = document.querySelector('#adminRosterMessage');
+      if (rosterMessage) rosterMessage.textContent = '';
+
+      if (adminRosterDraft[gender].has(name)) {
+        adminRosterDraft[gender].delete(name);
+      } else {
+        if (adminRosterDraft[gender].size >= 6) {
+          if (rosterMessage) {
+            rosterMessage.textContent = `⚠️ You already selected 6 ${gender === 'women' ? 'women' : 'men'}. Uncheck one first!`;
+            rosterMessage.style.color = '#f87171';
+          }
+          return;
+        }
+        adminRosterDraft[gender].add(name);
+      }
+      renderAdminRosterSelection();
+    });
+  });
+}
+
+async function saveActiveFinalists(womenNames, menNames) {
+  if (!Array.isArray(womenNames) || womenNames.length !== 6 || !Array.isArray(menNames) || menNames.length !== 6) {
+    throw new Error('Please select exactly 6 women and 6 men finalists.');
+  }
+
+  FINALISTS = buildFinalistsObject(womenNames, menNames);
+  const payload = { women: womenNames, men: menNames };
+  localStorage.setItem('blok_active_finalists', JSON.stringify(payload));
+
+  // If draft predictions selected someone who is no longer a finalist, clear them
+  if (draftPick.women.climber && !FINALISTS.women.some((w) => normalize(w.name) === normalize(draftPick.women.climber))) {
+    draftPick.women.climber = '';
+  }
+  if (draftPick.men.climber && !FINALISTS.men.some((m) => normalize(m.name) === normalize(draftPick.men.climber))) {
+    draftPick.men.climber = '';
+  }
+
+  // Update Remote Supabase if enabled
+  if (remoteEnabled) {
+    try {
+      const { error } = await database.from('event_settings').update({
+        active_finalists: JSON.stringify(payload),
+        updated_at: new Date().toISOString()
+      }).eq('id', 'main');
+
+      if (error) {
+        console.warn('Could not save active_finalists to Supabase:', error);
+      }
+    } catch (e) {
+      console.warn('Error syncing active_finalists to Supabase:', e);
+    }
+  }
+
+  renderWomenFinalistPool();
+  renderMenFinalistPool();
+  renderAdminFinalistOptions();
+  renderAdminRosterSelection();
+  render();
+}
+
+const resetRosterBtn = document.querySelector('#resetRosterBtn');
+if (resetRosterBtn) {
+  resetRosterBtn.addEventListener('click', () => {
+    adminRosterDraft.women.clear();
+    adminRosterDraft.men.clear();
+    const rosterMessage = document.querySelector('#adminRosterMessage');
+    if (rosterMessage) {
+      rosterMessage.textContent = 'All finalists deselected. Select 6 women and 6 men one by one.';
+      rosterMessage.style.color = 'var(--chalk-dim)';
+    }
+    renderAdminRosterSelection();
+  });
+}
+
+const saveFinalistsBtn = document.querySelector('#saveFinalistsBtn');
+if (saveFinalistsBtn) {
+  saveFinalistsBtn.addEventListener('click', async () => {
+    const rosterMessage = document.querySelector('#adminRosterMessage');
+    const wCount = adminRosterDraft.women.size;
+    const mCount = adminRosterDraft.men.size;
+
+    if (wCount !== 6 || mCount !== 6) {
+      if (rosterMessage) {
+        rosterMessage.textContent = `⚠️ Please select exactly 6 women and 6 men (currently: ${wCount} women, ${mCount} men).`;
+        rosterMessage.style.color = '#f87171';
+      }
+      return;
+    }
+
+    setSubmitting(saveFinalistsBtn, true);
+    if (rosterMessage) {
+      rosterMessage.textContent = 'Saving and publishing finalists...';
+      rosterMessage.style.color = 'var(--chalk-dim)';
+    }
+
+    try {
+      await saveActiveFinalists(Array.from(adminRosterDraft.women), Array.from(adminRosterDraft.men));
+      if (rosterMessage) {
+        rosterMessage.textContent = '✓ 12 Finalists successfully published & locked for voting!';
+        rosterMessage.style.color = 'var(--tape-yellow-soft)';
+      }
+    } catch (err) {
+      if (rosterMessage) {
+        rosterMessage.textContent = `❌ ${err.message || 'Error saving finalists'}`;
+        rosterMessage.style.color = '#f87171';
+      }
+    } finally {
+      setSubmitting(saveFinalistsBtn, false);
     }
   });
 }
@@ -1462,8 +1825,8 @@ function generate100CommunityPredictions() {
     'Dupont', 'Martin', 'Dumont', 'Leclercq', 'Laurent', 'Renard', 'Simon', 'Vandenberghe', 'Van Damme', 'De Clercq'
   ];
 
-  const womenCandidates = ['Chloé Caulier', 'Janja Garnbret', 'Laura Rogora', 'Oriane Bertone', 'Ai Mori'];
-  const menCandidates = ['Hannes Van Duysen', 'Simon Lorenzi', 'Alex Megos', 'Adam Ondra', 'Tomoa Narasaki'];
+  const womenCandidates = FINALISTS.women.map((w) => w.name);
+  const menCandidates = FINALISTS.men.map((m) => m.name);
 
   const seeded = [];
 
@@ -1472,18 +1835,18 @@ function generate100CommunityPredictions() {
     const lName = LAST_NAMES[(i * 3 + 7) % LAST_NAMES.length];
     const fullName = `${fName} ${lName}`;
 
-    // Pick distribution
-    const womenIdx = (i % 2 === 0) ? 1 : (i % 5);
-    const menIdx = (i % 3 === 0) ? 3 : (i % 2 === 0 ? 0 : (i % 5));
+    // Pick distribution across the 6 finalists
+    const womenIdx = (i % 2 === 0) ? 0 : (i % womenCandidates.length);
+    const menIdx = (i % 3 === 0) ? 0 : (i % 2 === 0 ? 1 : (i % menCandidates.length));
 
     // Realistic IFSC scores
-    const womenTops = [3, 3, 4, 4, 4][i % 5];
-    const womenZones = Math.max(womenTops, [4, 4, 4, 4, 3][(i + 2) % 5]);
+    const womenTops = [3, 3, 4, 4, 4, 2][i % 6];
+    const womenZones = Math.max(womenTops, [4, 4, 4, 4, 3, 3][(i + 2) % 6]);
     const womenAttTop = womenTops === 0 ? 0 : womenTops + ((i + 1) % 3);
     const womenAttZone = womenZones === 0 ? 0 : womenZones + (i % 2);
 
     const menTops = [2, 3, 3, 3, 4, 4][(i + 1) % 6];
-    const menZones = Math.max(menTops, [3, 4, 4, 4][i % 4]);
+    const menZones = Math.max(menTops, [3, 4, 4, 4, 4, 3][i % 6]);
     const menAttTop = menTops === 0 ? 0 : menTops + (i % 4);
     const menAttZone = menZones === 0 ? 0 : menZones + (i % 3);
 

@@ -489,6 +489,58 @@ button, input { font: inherit; }
   content: "✕"; color: var(--chalk-dark); font: 900 12px/1 var(--font-mono);
 }
 
+/* Women Pick Selection: Tape Yellow */
+.pick-woman-view .pick-head .title-accent {
+  color: var(--tape-yellow) !important;
+}
+.pick-woman-view .climber-option:hover {
+  background: rgba(235, 216, 126, 0.12);
+}
+.pick-woman-view .climber-option.is-selected {
+  background: rgba(235, 216, 126, 0.22);
+}
+.pick-woman-view .climber-option.is-selected .climber-sub small {
+  color: var(--tape-yellow);
+}
+.pick-woman-view .climber-option.is-selected .climber-extra {
+  background: var(--tape-yellow);
+  color: #140e06;
+}
+.pick-woman-view .climber-option.is-selected .chalk-check {
+  background: var(--tape-yellow);
+  border-color: var(--tape-yellow);
+}
+.pick-woman-view .climber-option.is-selected .chalk-check::after {
+  content: "✓";
+  color: #140e06;
+}
+
+/* Men Pick Selection: Mauve / Tape Pink */
+.pick-man-view .pick-head .title-accent {
+  color: var(--mauve-bright) !important;
+}
+.pick-man-view .climber-option:hover {
+  background: rgba(206, 171, 184, 0.12);
+}
+.pick-man-view .climber-option.is-selected {
+  background: rgba(206, 171, 184, 0.22);
+}
+.pick-man-view .climber-option.is-selected .climber-sub small {
+  color: var(--mauve-bright);
+}
+.pick-man-view .climber-option.is-selected .climber-extra {
+  background: var(--mauve);
+  color: #160a12;
+}
+.pick-man-view .climber-option.is-selected .chalk-check {
+  background: var(--mauve-bright);
+  border-color: var(--mauve-bright);
+}
+.pick-man-view .climber-option.is-selected .chalk-check::after {
+  content: "✓";
+  color: #160a12;
+}
+
 .pick-winner-view .bottom-actions {
   padding-top: 6px;
   gap: 4px;
@@ -674,7 +726,13 @@ button, input { font: inherit; }
 .success-view .receipt-label {
   font-size: 11px;
   letter-spacing: .16em;
+  color: var(--chalk-dim);
+}
+.success-view .receipt-row-women .receipt-label {
   color: var(--tape-yellow);
+}
+.success-view .receipt-row-men .receipt-label {
+  color: var(--mauve-bright);
 }
 .success-view .receipt-value {
   font-size: clamp(26px, 6.8vw, 34px);
@@ -683,7 +741,14 @@ button, input { font: inherit; }
 }
 .success-view .receipt-value.highlight-accent {
   font-size: clamp(28px, 7.2vw, 36px);
-  text-shadow: 0 0 16px rgba(224, 122, 158, 0.5);
+}
+.success-view .receipt-value.receipt-val-women {
+  color: var(--tape-yellow) !important;
+  text-shadow: 0 0 16px rgba(235, 216, 126, 0.45) !important;
+}
+.success-view .receipt-value.receipt-val-men {
+  color: var(--mauve-bright) !important;
+  text-shadow: 0 0 16px rgba(224, 122, 158, 0.45) !important;
 }
 .success-view .receipt-footer {
   border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -762,33 +827,117 @@ button, input { font: inherit; }
 
 /* Crowd Odds Scoreboard */
 .odds-box {
-  border: 2px solid var(--line-solid); border-radius: 0; padding: 18px;
-  background: rgba(14, 6, 12, 0.92); margin-bottom: 22px; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
+  border: 2px solid var(--line-solid);
+  border-radius: 0;
+  padding: 18px;
+  background: rgba(14, 6, 12, 0.92);
+  margin-bottom: 22px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
 }
+
+.odds-box.odds-box-women {
+  border-color: rgba(235, 216, 126, 0.45);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8), 0 0 14px rgba(235, 216, 126, 0.12);
+}
+
+.odds-box.odds-box-men {
+  border-color: rgba(206, 171, 184, 0.45);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8), 0 0 14px rgba(206, 171, 184, 0.12);
+}
+
 .odds-header {
-  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 16px;
 }
+
 .odds-title {
-  font: 700 11.5px var(--font-mono); letter-spacing: .12em; color: var(--mauve);
-  margin: 0; text-transform: uppercase;
+  font: 700 12px/1.2 var(--font-mono);
+  letter-spacing: .12em;
+  margin: 0;
+  text-transform: uppercase;
 }
-.odds-total { font: 700 10.5px var(--font-mono); color: var(--chalk-dim); }
-.odds-item { margin-bottom: 14px; }
-.odds-item:last-child { margin-bottom: 0; }
+
+/* Women Theme: Tape Yellow */
+.odds-box-women .odds-title,
+.odds-title-women {
+  color: var(--tape-yellow) !important;
+}
+
+.odds-box-women .odds-labels span:last-child,
+.odds-box-women .odds-pct {
+  color: var(--tape-yellow) !important;
+}
+
+.odds-box-women .odds-bar-fill {
+  height: 100%;
+  background: var(--tape-yellow) !important;
+  border-radius: 0;
+  transition: width .4s ease;
+}
+
+.odds-box-women .odds-item:first-of-type .odds-bar-fill {
+  background: #fff394 !important;
+  box-shadow: 0 0 10px rgba(235, 216, 126, 0.5);
+}
+
+/* Men Theme: Mauve / Tape Pink */
+.odds-box-men .odds-title,
+.odds-title-men {
+  color: var(--mauve-bright) !important;
+}
+
+.odds-box-men .odds-labels span:last-child,
+.odds-box-men .odds-pct {
+  color: var(--mauve-bright) !important;
+}
+
+.odds-box-men .odds-bar-fill {
+  height: 100%;
+  background: var(--mauve) !important;
+  border-radius: 0;
+  transition: width .4s ease;
+}
+
+.odds-box-men .odds-item:first-of-type .odds-bar-fill {
+  background: var(--mauve-bright) !important;
+  box-shadow: 0 0 10px rgba(224, 122, 158, 0.5);
+}
+
+.odds-total {
+  font: 700 10.5px var(--font-mono);
+  color: var(--chalk-dim);
+}
+
+.odds-item {
+  margin-bottom: 14px;
+}
+
+.odds-item:last-child {
+  margin-bottom: 0;
+}
+
 .odds-labels {
-  display: flex; justify-content: space-between; font: 400 19px/1 var(--font-poster);
-  letter-spacing: .04em; margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  font: 400 19px/1 var(--font-poster);
+  letter-spacing: .04em;
+  margin-bottom: 6px;
 }
+
 .odds-labels span:last-child {
-  font: 700 11.5px var(--font-mono); color: var(--mauve-bright); align-self: flex-end;
+  font: 700 11.5px var(--font-mono);
+  align-self: flex-end;
 }
+
 .odds-bar-track {
-  width: 100%; height: 8px; background: rgba(251, 249, 250, 0.1); border-radius: 0; overflow: hidden;
+  width: 100%;
+  height: 8px;
+  background: rgba(251, 249, 250, 0.1);
+  border-radius: 0;
+  overflow: hidden;
 }
-.odds-bar-fill {
-  height: 100%; background: var(--mauve); border-radius: 0; transition: width .4s ease;
-}
-.odds-item:first-of-type .odds-bar-fill { background: var(--tape-yellow); }
 
 /* Correct entries table */
 .result-list-title {
@@ -1229,6 +1378,76 @@ button, input { font: inherit; }
   font: 700 20px var(--font-mono);
   color: #fff;
 }
+
+/* ================= WOMEN'S SCORECARD (TAPE YELLOW) ================= */
+.score-woman-view .pick-head .title-accent {
+  color: var(--tape-yellow) !important;
+}
+.score-woman-view .score-hero-row {
+  border-color: var(--tape-yellow) !important;
+}
+.score-woman-view .score-badge-label {
+  color: var(--tape-yellow) !important;
+}
+.score-woman-view .score-badge-val {
+  color: var(--tape-yellow) !important;
+}
+.score-woman-view .score-boulders-badge {
+  background: var(--tape-yellow) !important;
+  color: #140e06 !important;
+  border-color: #140e06 !important;
+}
+.score-woman-view .boulders-num,
+.score-woman-view .boulders-text {
+  color: #140e06 !important;
+}
+.score-woman-view .ifsc-card-hero .ifsc-pill.is-active {
+  background: var(--tape-yellow) !important;
+  border-color: var(--tape-yellow) !important;
+  color: #140e06 !important;
+}
+.score-woman-view .ifsc-card-hero .step-val {
+  color: var(--tape-yellow) !important;
+}
+.score-woman-view .ifsc-card-hero .step-btn:hover {
+  background: var(--tape-yellow) !important;
+  color: #140e06 !important;
+}
+
+/* ================= MEN'S SCORECARD (MAUVE / TAPE PINK) ================= */
+.score-man-view .pick-head .title-accent {
+  color: var(--mauve-bright) !important;
+}
+.score-man-view .score-hero-row {
+  border-color: var(--mauve-bright) !important;
+}
+.score-man-view .score-badge-label {
+  color: var(--mauve-bright) !important;
+}
+.score-man-view .score-badge-val {
+  color: var(--mauve-bright) !important;
+}
+.score-man-view .score-boulders-badge {
+  background: var(--mauve-bright) !important;
+  color: #160a12 !important;
+  border-color: #160a12 !important;
+}
+.score-man-view .boulders-num,
+.score-man-view .boulders-text {
+  color: #160a12 !important;
+}
+.score-man-view .ifsc-card-hero .ifsc-pill.is-active {
+  background: var(--mauve-bright) !important;
+  border-color: var(--mauve-bright) !important;
+  color: #160a12 !important;
+}
+.score-man-view .ifsc-card-hero .step-val {
+  color: var(--mauve-bright) !important;
+}
+.score-man-view .ifsc-card-hero .step-btn:hover {
+  background: var(--mauve-bright) !important;
+  color: #160a12 !important;
+}
 .ifsc-card-header {
   display: flex;
   justify-content: space-between;
@@ -1493,6 +1712,162 @@ button, input { font: inherit; }
       inset 0 0 8px rgba(235, 216, 126, 0.03);
     border-color: rgba(235, 216, 126, 0.38);
   }
+}
+
+.admin-roster-card {
+  background: rgba(14, 6, 12, 0.96);
+  border: 1.5px solid rgba(235, 216, 126, 0.35);
+  padding: 16px;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.roster-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.btn-roster-reset {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--chalk-muted);
+  border: 1px dashed var(--line-solid);
+  padding: 4px 8px;
+  font: 700 9.5px/1 var(--font-mono);
+  letter-spacing: .08em;
+  cursor: pointer;
+  transition: all .15s ease;
+  text-transform: uppercase;
+}
+
+.btn-roster-reset:hover {
+  background: rgba(235, 216, 126, 0.12);
+  color: var(--tape-yellow);
+  border-color: var(--tape-yellow);
+}
+
+.roster-cat-card {
+  margin-bottom: 14px;
+}
+
+.admin-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (max-width: 380px) {
+  .admin-roster-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.roster-athlete-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(14, 6, 12, 0.85);
+  border: 1.5px solid var(--line-raw);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  text-align: left;
+  border-radius: 0;
+}
+
+.roster-athlete-item:hover {
+  background: rgba(251, 249, 250, 0.08);
+  border-color: var(--chalk-dim);
+}
+
+.roster-athlete-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.roster-athlete-name {
+  font: 700 12px/1.2 var(--font-body);
+  color: var(--chalk);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roster-athlete-meta {
+  font: 700 10px/1.2 var(--font-mono);
+  color: var(--chalk-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.roster-athlete-check {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--chalk-dim);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  font: 900 11px/1 var(--font-mono);
+}
+
+/* Women Active Selection */
+.admin-cat-women .roster-athlete-item.is-selected {
+  border-color: var(--tape-yellow-soft);
+  background: rgba(235, 216, 126, 0.14);
+}
+
+.admin-cat-women .roster-athlete-item.is-selected .roster-athlete-name {
+  color: #ffffff;
+}
+
+.admin-cat-women .roster-athlete-item.is-selected .roster-athlete-meta {
+  color: var(--tape-yellow-soft);
+}
+
+.admin-cat-women .roster-athlete-item.is-selected .roster-athlete-check {
+  background: var(--tape-yellow-soft);
+  border-color: var(--tape-yellow-soft);
+  color: #140e06;
+}
+
+/* Men Active Selection */
+.admin-cat-men .roster-athlete-item.is-selected {
+  border-color: var(--tape-pink-soft);
+  background: rgba(206, 171, 184, 0.14);
+}
+
+.admin-cat-men .roster-athlete-item.is-selected .roster-athlete-name {
+  color: #ffffff;
+}
+
+.admin-cat-men .roster-athlete-item.is-selected .roster-athlete-meta {
+  color: var(--tape-pink-soft);
+}
+
+.admin-cat-men .roster-athlete-item.is-selected .roster-athlete-check {
+  background: var(--tape-pink-soft);
+  border-color: var(--tape-pink-soft);
+  color: #160a12;
+}
+
+.badge-dim {
+  background: rgba(251, 249, 250, 0.12) !important;
+  color: var(--chalk-dim) !important;
+  border: 1px dashed var(--line-raw) !important;
+}
+
+.badge-error {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+  border: 1px solid #ef4444 !important;
 }
 
 .admin-results-card {
@@ -1816,7 +2191,7 @@ button, input { font: inherit; }
 .champ-box {
   position: relative;
   background-color: var(--tape-yellow);
-  /* Climbing gym chalk / magnesium dust smudges on the yellow box */
+  /* Climbing gym chalk / magnesium dust smudges on the box */
   background-image:
     radial-gradient(circle at 14% 22%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.2) 16%, transparent 40%),
     radial-gradient(ellipse at 88% 68%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 22%, transparent 50%),
@@ -1836,6 +2211,22 @@ button, input { font: inherit; }
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+}
+
+.champ-box.champ-women {
+  background-color: var(--tape-yellow);
+  box-shadow:
+    0 0 14px rgba(245, 215, 82, 0.42),
+    0 0 28px rgba(245, 215, 82, 0.2),
+    5px 5px 0 var(--chalk);
+}
+
+.champ-box.champ-men {
+  background-color: var(--tape-pink-soft);
+  box-shadow:
+    0 0 14px rgba(206, 171, 184, 0.45),
+    0 0 28px rgba(206, 171, 184, 0.22),
+    5px 5px 0 var(--chalk);
 }
 
 .champ-role {
@@ -1902,23 +2293,24 @@ button, input { font: inherit; }
   box-shadow: 1.5px 1.5px 0 rgba(0, 0, 0, 0.6);
 }
 
-/* 2. Contest Winners (Podium Card with soft yellow neon, chalk smudges, points + score breakdown) */
+/* 2. Contest Winners (Chalk-Dusty White Podium Card + Crown above name) */
 .podium-card {
   position: relative;
-  background-color: var(--tape-yellow);
-  /* Climbing gym chalk / magnesium dust smudges across the champion card */
+  background-color: #f3f0ea;
+  /* Climbing gym chalk / magnesium dust smudges across the chalk-white card */
   background-image:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.2) 16%, transparent 40%),
-    radial-gradient(ellipse at 88% 45%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 20%, transparent 48%),
-    radial-gradient(ellipse at 50% 92%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.1) 22%, transparent 45%),
-    radial-gradient(circle at 75% 15%, rgba(255, 255, 255, 0.3) 0%, transparent 30%);
-  color: var(--chalk-dark);
-  border: 2px solid var(--chalk-dark);
+    radial-gradient(circle at 14% 18%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.5) 18%, transparent 45%),
+    radial-gradient(ellipse at 86% 40%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.45) 20%, transparent 48%),
+    radial-gradient(ellipse at 50% 90%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.4) 22%, transparent 52%),
+    radial-gradient(circle at 75% 15%, rgba(255, 255, 255, 0.8) 0%, transparent 28%),
+    radial-gradient(circle at 10% 75%, rgba(255, 255, 255, 0.75) 0%, transparent 30%);
+  color: #140d12;
+  border: 2.5px solid #140d12;
   box-shadow:
-    0 0 18px rgba(245, 215, 82, 0.45),
-    0 0 36px rgba(245, 215, 82, 0.22),
-    6px 6px 0 var(--chalk);
-  padding: 18px 16px 16px;
+    0 0 20px rgba(255, 255, 255, 0.65),
+    0 0 45px rgba(255, 255, 255, 0.35),
+    6px 6px 0 rgba(0, 0, 0, 0.9);
+  padding: 16px 16px 16px;
   margin-bottom: 22px;
   text-align: center;
   display: flex;
@@ -1926,24 +2318,53 @@ button, input { font: inherit; }
   align-items: center;
 }
 
-.podium-tag {
-  font: 700 11px var(--font-mono);
-  letter-spacing: .12em;
-  color: var(--chalk-dark);
+.podium-crown {
+  position: relative;
+  z-index: 3;
+  margin-top: 2px;
+  margin-bottom: -15px;
+  transform: rotate(-8deg);
+  transform-origin: bottom center;
+  filter: drop-shadow(2px 3px 0 #140d12) drop-shadow(0 0 10px rgba(235, 216, 126, 0.4));
+  animation: floatCrown 3.5s ease-in-out infinite;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.urban-crown-svg {
   display: block;
-  text-transform: uppercase;
-  margin-bottom: 4px;
+  overflow: visible;
+  width: clamp(56px, 16vw, 68px);
+  height: auto;
+}
+
+@keyframes floatCrown {
+  0%, 100% { transform: translateY(0) rotate(-8deg); }
+  50% { transform: translateY(-4px) rotate(-6deg); }
+}
+
+.podium-tag {
+  display: none;
 }
 
 .podium-name-tape {
+  position: relative;
+  z-index: 2;
   font-size: clamp(26px, 7.5vw, 36px);
   line-height: 1.1;
   letter-spacing: .02em;
   padding: 8px 18px 6px;
-  margin: 8px 0 10px;
+  margin: 4px 0 10px;
   transform: rotate(-1.5deg);
   max-width: 100%;
   overflow-wrap: anywhere;
+  background-color: #ffffff;
+  color: #140d12;
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.75),
+    3px 3px 0 rgba(0, 0, 0, 0.85);
 }
 
 .podium-points {
@@ -1953,21 +2374,22 @@ button, input { font: inherit; }
   gap: 6px;
   background: #140d12;
   color: var(--tape-yellow);
-  border: 2px solid var(--chalk-dark);
+  border: 2px solid #000;
   padding: 6px 18px 5px;
   box-shadow: 2.5px 2.5px 0 rgba(0, 0, 0, 0.75);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .podium-points b {
   font: 700 32px/1 var(--font-mono);
   color: var(--tape-yellow);
   letter-spacing: .02em;
+  text-shadow: 0 0 12px rgba(235, 216, 126, 0.45);
 }
 
 .podium-points span {
   font: 700 11.5px var(--font-mono);
-  color: var(--chalk-dim);
+  color: rgba(235, 216, 126, 0.85);
   letter-spacing: .08em;
 }
 
@@ -2057,22 +2479,27 @@ button, input { font: inherit; }
 }
 
 .podium-card.is-empty {
-  background: var(--bg-card);
-  color: var(--chalk);
+  background-color: #eae6de;
+  color: #140d12;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.8);
-  border: 1.5px dashed var(--line-solid);
+  border: 2px dashed rgba(20, 13, 18, 0.5);
 }
-.podium-card.is-empty .podium-tag { color: var(--chalk-muted); }
+.podium-card.is-empty .podium-crown {
+  opacity: 0.45;
+  filter: grayscale(0.8);
+  animation: none;
+  margin-bottom: 4px;
+}
 .podium-empty-title {
   font: 400 22px/1.1 var(--font-poster);
   letter-spacing: .03em;
-  color: var(--chalk);
+  color: #140d12;
   text-transform: uppercase;
   margin: 6px 0 2px;
 }
 .podium-empty-note {
-  font: 400 12.5px/1.5 var(--font-body);
-  color: var(--chalk-muted);
+  font: 500 12.5px/1.5 var(--font-body);
+  color: #554d52;
   margin: 0;
 }
 

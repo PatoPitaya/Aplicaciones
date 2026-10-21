@@ -10,14 +10,18 @@ create table if not exists public.predictions (
   created_at timestamptz not null default now()
 );
 
--- Event settings (official champion, raffle winner, and predictions status)
+-- Event settings (official champion, active finalists, raffle winner, and predictions status)
 create table if not exists public.event_settings (
   id text primary key default 'main' check (id = 'main'),
   official_winner text,
+  active_finalists text,
   raffle_winner text,
   predictions_open boolean not null default true,
   updated_at timestamptz not null default now()
 );
+
+-- For existing installations, ensure active_finalists column exists:
+alter table public.event_settings add column if not exists active_finalists text;
 
 insert into public.event_settings (id)
   values ('main')
