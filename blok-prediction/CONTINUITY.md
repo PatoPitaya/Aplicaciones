@@ -6,7 +6,7 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
 
 1. **Schedule & Timing:**
    - Finals begin at **20:30**.
-   - Predictions close at **20:00**.
+   - Predictions close at **20:30** (right as finals kick off).
    - Date: **24.10.2026**.
 2. **Language & Localization:**
    - Completely in English (international climbing audience in Antwerp/Benelux).
@@ -16,7 +16,7 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
    - Moved away from generic "AI dark SaaS" cards (no rounded glassmorphic pills, no glowing dots).
    - Genuine urban bouldering & street poster look inspired by Klimzaal Blok:
      - Condensed poster typography (`Bebas Neue` for titles, `Syne` for headings).
-     - Raw competition tags & timestamps in `Space Mono` (`[ LOCKS // 20:00 ]`, `BIB #01`).
+     - Raw competition tags & timestamps in `Space Mono` (`[ FINALS // 20:30 ]`, `BIB #01`).
      - Real physical metaphors: climbing finger tape tags (`.tape-tag`), brutalist offset block shadows (`box-shadow: 4px 4px 0 var(--mauve)`), and competition scorecard style for athlete picks.
      - Gritty duotone flyer background showing chalk-dusted hands and taped fingers.
 4. **Gamification & Dual IFSC Scoring:**
@@ -46,8 +46,9 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
      Click `"⚡ LOCK IN PREDICTIONS →"`.
    - **Confirmation Receipt:** Displays Women's Pick first and Men's Pick second.
    - **Full Back Navigation:** Each step has a functioning `← BACK` button preserving previous choices.
-7. **Organized & Minimalist Admin Panel:**
-   - Clean, modular structure: Section 1 (Event Control & Betting Status), Section 1.5 (Athletes Roster & Finalists Selection: 6 Women + 6 Men chosen from the 28 qualification competitors), Section 2 (Official Finals Results Form & Calculation), Section 3 (Live Entries Feed & Statistics with one-click 100 test voter seed), and Section 4 (Safe collapsible participant records deletion).
+7. **Organized & Minimalist Admin Panel & Password Protection:**
+   - **Password-Protected Access:** The organizer drawer (`ORG. ↗`, `#adminPanel`) is protected by Supabase authentication (`database.auth.signInWithPassword`). Spectators opening the drawer see a secure authentication form (`#adminAuth`) requiring an authorized organizer Email and Password. Upon signing in, Supabase validates the credentials and activates `#adminControls`, revealing competition toggles, roster management, official results forms, and entries feeds. Includes an authorized `LOG OUT` button (`#adminLogout`) at the bottom.
+   - Clean, modular structure: Section 1 (Event Control & Betting Status), Section 1.2 (Spectator QR Code & URL configuration), Section 1.5 (Athletes Roster & Finalists Selection: 6 Women + 6 Men chosen from the 28 qualification competitors), Section 2 (Official Finals Results Form & Calculation), Section 3 (Live Entries Feed & Statistics with one-click 100 test voter seed), and Section 4 (Safe collapsible participant records deletion).
    - **Dynamic Finalists Selection (12 Finalists):** Master catalog of 28 athletes (12 Women, 16 Men) grouped by country. In the organizer console (Section 1.5), athletes start completely **deselected** (`0 / 6 SELECTED`) so organizers can choose the 6 female and 6 male finalists one by one with live progress counters. Includes a quick `"↺ DESELECT ALL"` button to reset all selections from scratch at any moment. Clicking `"⚡ PUBLISH & LOCK 12 FINALISTS"` locks the selection, updates the spectator voting pools, the admin results dropdowns, and syncs across devices via `localStorage` and Supabase `active_finalists`.
    - **Instant Optimistic Toggling:** The predictions toggle button (`#toggleOpen`) updates the UI instantly (turning the status badge and button red for closed, yellow for open) with zero latency, and syncs to Supabase in the background. Gating `!isAdmin` check and blocking `window.confirm` dialogs removed.
    - **Safe Data Reset:** `#clearData` relocated to the very bottom inside a closed `<details class="admin-danger-zone">` to prevent accidental data wipes.
@@ -67,7 +68,13 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
      - Top attempts closeness: `max(0, 15 - abs(pred_att_top - real_att_top) * 2)`.
      - Zone attempts closeness: `max(0, 10 - abs(pred_att_zone - real_att_zone) * 2)`.
      - Full exact match bonus: +25 pts extra (winner + exact IFSC combination).
-   - **Tiebreaker:** (1) Highest total points, (2) Lowest attempt difference across both categories, (3) Lowest Tops/Zones score difference. If tied on all, all are declared winners on the podium.
+   - **Ranking & Winner Priority:** 
+     1. Complete votes first (must have both Women and Men chosen).
+     2. **Number of champion matches (Priority #1: 2 matches > 1 match > 0 matches).**
+     3. Total points (IFSC tiebreaker).
+     4. Lowest attempt difference across both categories.
+     5. Lowest Tops/Zones score difference.
+     - On the confirmation ticket, the rule is clearly highlighted: *"Prize rule: Matching both champions (Women + Men) takes #1 priority. Predicted IFSC scores break ties to crown the winners!"*
    - **Admin Official Results Entry:** Box 2 has dropdowns for Men & Women champions with Tops, Zones, and Attempts inputs + live preview badges + `⚡ CALCULATE POINTS & PICK WINNERS →` button.
    - **100 Seeded Community Predictions:** Ready out of the box with realistic IFSC scores, with a one-click `🎲 SEED 100 TEST VOTERS` button in admin.
 
@@ -119,6 +126,44 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
       - Confirmation Receipt: `MEN'S PICK` label and confirmed score text (`.receipt-val-men`).
       - Results & Leaderboard: Men's champion box (`.champ-men`), winner podium men row (`.podium-score-men`), and participant `M:` picks and scores (`.lb-pick-men`).
       - Organizer Console: Pink tape banner, pink status badges, pink selects, and pink roster cards.
+
+16. **Event QR Code Center & Standalone PNG Assets (Render: blok-prediction.onrender.com):**
+    - **In-App QR Access:**
+      - Header button `📲 QR` on the welcome screen and Section 1.2 in the Organizer Console (`ORG. ↗`).
+      - Opens an interactive brutalist QR modal (`#qrModal`) powered by local zero-dependency `qrcode.min.js`.
+      - **Large On-Screen QR:** Rendered at 280x280 px with crisp high-contrast modules for easy mobile camera scanning off screens.
+      - **Organizer-Only URL Configuration:** The `EVENT URL (WHERE QR POINTS)` configuration input and `UPDATE` button are located strictly inside the Organizer Console (Section 1.2), ensuring spectators cannot alter the destination. The public spectator modal shows a clean read-only `LINK: blok-prediction.onrender.com` indicator.
+      - **Instant Designer Downloads:** Exclusively the 2 required standalone PNG assets to hand over to flyer / poster graphic designers:
+        1. `qr_code_hires.png`: 2000x2000 px, 300+ DPI ultra-crisp standalone QR code with white margin.
+        2. `qr_code_transparent.png`: 2000x2000 px transparent background PNG for overlaying on colored poster graphics or textures.
+      - **In-App Downloads:** Clean 1-tap download buttons (`DOWNLOAD HIGH-RES (PNG)` and `TRANSPARENT BACKGROUND (PNG)`).
+      - `generate_qr_assets.py`: Dedicated Python CLI tool to regenerate both PNG assets (`python generate_qr_assets.py --url https://...`). All poster generation and vector files removed.
+
+17. **Manual Finalist Entry System (Section 1.5 - Organizer Console):**
+    - **Context & Need:** Event has ~40+ climbers, many unknown until qualification rounds conclude live on event day. The previous static 28-checkbox grid was replaced with open manual text entry for all 12 finalist slots (6 Women & 6 Men).
+    - **UI & UX:**
+      - 6 numbered bib slots per category (`#01` to `#06`) with tape-colored badges (Tape Yellow for Women, Mauve/Pink for Men).
+      - Autocomplete suggestions via `<datalist>` populated from known athletes, but permits typing ANY arbitrary climber name.
+      - Supports country code parsing e.g. `"Lucas Van de Velde (BEL)"` -> extracts `BEL` code & flag; fallback to `FINALIST / BLOK / 🧗` for unlisted athletes.
+      - Individual row clear buttons (`✕`).
+      - Quick batch paste: Collapsible helper allowing the organizer to paste a 6-line list of names directly from WhatsApp/notes into either category.
+      - `🎲 DEMO` button for rapid testing and `↺ CLEAR ALL` for quick reset.
+      - Live slot counter badges (`X / 6 READY` / `X / 6 (Y EMPTY)`).
+    - **Validation & Publishing:**
+      - `⚡ PUBLISH & LOCK 12 FINALISTS` validates that all 12 slots are populated.
+      - If incomplete, highlights empty slots with `.is-empty-warning` and displays a clear message.
+      - Once published, updates `FINALISTS` in memory, stores in `localStorage` (`blok_active_finalists`), syncs to Supabase table `active_finalists`, and immediately re-renders Step 1 (Women) and Step 3 (Men) voting pools, as well as admin official result resolution dropdowns.
+
+18. **Manual Winner Selection & Quick-Tap Chips (Section 2 & Spectator Flow):**
+    - **Organizer Console Section 2 (Official Finals Results):**
+      - Replaced rigid `<select>` dropdowns with **1-tap finalist chips** (`#adminWomenWinnerChips` and `#adminMenWinnerChips`) + **manual text inputs** (`#adminWomenWinner`, `#adminMenWinner`) with clear buttons (`✕`).
+      - Tapping any of the 6 finalist chips instantly selects that champion and fills the input.
+      - Typing by hand allows entering any custom champion name, with datalists prioritizing active finalists followed by known competitors.
+      - Integrated with official IFSC scorecard inputs (Tops, Att. Tops, Zones, Att. Zones) and point calculation / crowning.
+      - `↺ RESET OFFICIAL RESULTS` clears winner inputs, unchecks chips, and resets scores.
+    - **Spectator Prediction Flow (Step 1 & Step 3):**
+      - Displays the 6 official finalist cards (`.climber-option`) set by the organizer. Spectators simply tap their champion from among the 6 contenders. Unnecessary manual text fallback removed.
+      - `normalize()` strips trailing `(XXX)` country codes before comparison so that `"Celine Cuypers (BEL)"` and `"Celine Cuypers"` match 100%.
 
 ## How to Test Locally
 

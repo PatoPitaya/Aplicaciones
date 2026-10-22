@@ -29,7 +29,8 @@ const appFrame = document.querySelector('#appFrame');
 const seedTestBtn = document.querySelector('#seedTestBtn');
 
 function normalize(value) {
-  return String(value || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const clean = String(value || '').trim().replace(/\s*\([A-Za-z]{3}\)$/, '').trim();
+  return clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 function escapeHtml(value) {
@@ -55,7 +56,7 @@ function getUrbanCrownSvg(width = 68, height = 48) {
   `;
 }
 
-let isAdmin = true;
+let isAdmin = !remoteEnabled;
 let state = readLocalState();
 let pendingParticipant = null;
 
@@ -121,10 +122,29 @@ const DEFAULT_FINALIST_NAMES = {
 };
 
 function buildFinalistsObject(womenNames, menNames) {
-  const getCompetitor = (gender, name) => {
-    const found = ALL_COMPETITORS[gender].find(c => normalize(c.name) === normalize(name));
-    if (found) return found;
-    return { name, country: 'INTERNATIONAL', code: 'INT', flag: '🧗' };
+  const getCompetitor = (gender, rawInput) => {
+    const raw = String(rawInput || '').trim();
+    // Support "Name (CODE)" format e.g. "Lucas Van de Velde (BEL)" or "Lucas Van de Velde"
+    const match = raw.match(/^(.*?)(?:\s*\(([A-Za-z]{3})\))?$/);
+    const cleanName = match && match[1] ? match[1].trim() : raw;
+    const explicitCode = match && match[2] ? match[2].toUpperCase() : null;
+
+    const found = ALL_COMPETITORS[gender]?.find((c) => normalize(c.name) === normalize(cleanName));
+    if (found) {
+      return {
+        name: found.name,
+        country: found.country,
+        code: explicitCode || found.code,
+        flag: found.flag
+      };
+    }
+
+    return {
+      name: cleanName || raw,
+      country: explicitCode ? explicitCode : 'FINALIST',
+      code: explicitCode || 'BLOK',
+      flag: '🧗'
+    };
   };
 
   return {
@@ -597,7 +617,7 @@ function renderWomenFinalistPool() {
       draftPick.women.climber = button.dataset.womanChoice;
       draftPick.women = sanitizeIfsc(draftPick.women);
       renderWomenFinalistPool();
-      if (toWomenScoreBtn) toWomenScoreBtn.disabled = false;
+      if (toWomenScoreBtn) toWomenScoreBtn.disabled = !state.predictionsOpen;
     });
   });
 
@@ -664,7 +684,7 @@ function renderMenFinalistPool() {
       draftPick.men.climber = button.dataset.manChoice;
       draftPick.men = sanitizeIfsc(draftPick.men);
       renderMenFinalistPool();
-      if (toMenScoreBtn) toMenScoreBtn.disabled = false;
+      if (toMenScoreBtn) toMenScoreBtn.disabled = !state.predictionsOpen;
     });
   });
 
@@ -1070,8 +1090,8 @@ function render() {
   const deadlineEl = document.querySelector('#deadlineNote');
   if (deadlineEl) {
     deadlineEl.innerHTML = state.predictionsOpen
-      ? '<span class="status-dot"></span><span>Predictions open until <b>20:00</b> · Finals at <b>20:30</b></span>'
-      : '<span class="status-dot is-closed"></span><span>Predictions are <b>closed</b> · Finals in progress!</span>';
+      ? '<span class="status-dot"></span><span>Predictions open until <b>20:30</b> · Finals start at <b>20:30</b></span>'
+      : '<span class="status-dot is-closed"></span><span>Predictions are <b> CLOSED</b> · </span>';
   }
 
   const openStatusEl = document.querySelector('#openStatus');
@@ -1120,6 +1140,28 @@ function render() {
   updateAdminUi();
 }
 
+async function checkAdmin() {
+  if (!remoteEnabled) return true;
+  try {
+    const sessionResponse = await database.auth.getSession();
+    const session = sessionResponse.data?.session;
+    if (!session) return false;
+
+    // Check admin_users table first
+    const response = await database.from('admin_users').select('user_id').eq('user_id', session.user.id).maybeSingle();
+    if (!response.error && response.data?.user_id) {
+      return true;
+    }
+
+    // Since accounts in this project's Auth are created exclusively by the organizer in Supabase,
+    // any authenticated session is recognized as an authorized organizer
+    return Boolean(session.user);
+  } catch (err) {
+    console.warn('Could not validate organizer account.', err);
+    return false;
+  }
+}
+
 function updateAdminUi() {
   adminAuth.hidden = isAdmin;
   adminControls.hidden = !isAdmin;
@@ -1139,6 +1181,8 @@ function setPanel(open, pushHistory = true) {
   if (open) {
     renderAdminRosterSelection();
     renderAdminFinalistOptions();
+    const urlInput = document.querySelector('#qrTargetUrl');
+    if (urlInput) urlInput.value = getQrTargetUrl();
   }
 
   if (open && !wasOpen) {
@@ -1207,6 +1251,7 @@ async function loadRemoteState() {
 async function refresh() {
   if (remoteEnabled) {
     try {
+      isAdmin = await checkAdmin();
       await loadRemoteState();
     } catch (error) {
       console.error(error);
@@ -1358,79 +1403,141 @@ if (confirmPredictionBtn) {
   });
 }
 
-// ================= ADMIN: FINALISTS SELECTION (6 WOMEN & 6 MEN) =================
-function initAdminRosterDraft(loadCurrent = false) {
-  if (loadCurrent) {
-    adminRosterDraft.women = new Set(FINALISTS.women.map((w) => w.name));
-    adminRosterDraft.men = new Set(FINALISTS.men.map((m) => m.name));
-  } else {
-    adminRosterDraft.women.clear();
-    adminRosterDraft.men.clear();
-  }
-}
-
+// ================= ADMIN: MANUAL FINALISTS & WINNER SELECTION =================
 function renderAdminFinalistOptions() {
   const adminWomenWinner = document.querySelector('#adminWomenWinner');
   const adminMenWinner = document.querySelector('#adminMenWinner');
+  const womenChips = document.querySelector('#adminWomenWinnerChips');
+  const menChips = document.querySelector('#adminMenWinnerChips');
 
-  if (adminWomenWinner) {
-    const currentVal = adminWomenWinner.value;
-    adminWomenWinner.innerHTML = `
-      <option value="" disabled ${!currentVal ? 'selected' : ''}>Select Women's Champion...</option>
-      ${FINALISTS.women.map((w) => `
-        <option value="${escapeHtml(w.name)}" ${w.name === currentVal ? 'selected' : ''}>
-          ${escapeHtml(w.flag || '')} ${escapeHtml(w.name)} (${escapeHtml(w.code || w.country)})
-        </option>
-      `).join('')}
-    `;
+  // Populate datalists so suggestions prioritize the 12 active finalists, followed by known competitors
+  const dlWomen = document.querySelector('#knownCompetitorsWomen');
+  const dlMen = document.querySelector('#knownCompetitorsMen');
+  if (dlWomen) {
+    const list = [...FINALISTS.women, ...ALL_COMPETITORS.women.filter((c) => !FINALISTS.women.some((w) => normalize(w.name) === normalize(c.name)))];
+    dlWomen.innerHTML = list.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.flag || '🧗')} ${escapeHtml(c.code || c.country || 'FINALIST')}</option>`).join('');
+  }
+  if (dlMen) {
+    const list = [...FINALISTS.men, ...ALL_COMPETITORS.men.filter((c) => !FINALISTS.men.some((m) => normalize(m.name) === normalize(c.name)))];
+    dlMen.innerHTML = list.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.flag || '🧗')} ${escapeHtml(c.code || c.country || 'FINALIST')}</option>`).join('');
   }
 
-  if (adminMenWinner) {
-    const currentVal = adminMenWinner.value;
-    adminMenWinner.innerHTML = `
-      <option value="" disabled ${!currentVal ? 'selected' : ''}>Select Men's Champion...</option>
-      ${FINALISTS.men.map((m) => `
-        <option value="${escapeHtml(m.name)}" ${m.name === currentVal ? 'selected' : ''}>
-          ${escapeHtml(m.flag || '')} ${escapeHtml(m.name)} (${escapeHtml(m.code || m.country)})
-        </option>
-      `).join('')}
-    `;
+  // Render Women Chips
+  if (womenChips) {
+    const currentVal = normalize(adminWomenWinner ? adminWomenWinner.value : '');
+    womenChips.innerHTML = FINALISTS.women.map((w, idx) => {
+      const isSelected = normalize(w.name) === currentVal;
+      return `
+        <button type="button" class="admin-chip-btn ${isSelected ? 'is-selected' : ''}" data-winner-gender="women" data-winner-name="${escapeHtml(w.name)}">
+          <span class="chip-bib">#0${idx + 1}</span>
+          <span class="chip-name">${escapeHtml(w.name)}</span>
+        </button>
+      `;
+    }).join('');
+
+    womenChips.querySelectorAll('[data-winner-gender="women"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!adminWomenWinner) return;
+        adminWomenWinner.value = btn.dataset.winnerName;
+        womenChips.querySelectorAll('.admin-chip-btn').forEach((c) => c.classList.remove('is-selected'));
+        btn.classList.add('is-selected');
+        if (typeof updateAdminBadges === 'function') updateAdminBadges();
+      });
+    });
+  }
+
+  // Render Men Chips
+  if (menChips) {
+    const currentVal = normalize(adminMenWinner ? adminMenWinner.value : '');
+    menChips.innerHTML = FINALISTS.men.map((m, idx) => {
+      const isSelected = normalize(m.name) === currentVal;
+      return `
+        <button type="button" class="admin-chip-btn ${isSelected ? 'is-selected' : ''}" data-winner-gender="men" data-winner-name="${escapeHtml(m.name)}">
+          <span class="chip-bib">#0${idx + 1}</span>
+          <span class="chip-name">${escapeHtml(m.name)}</span>
+        </button>
+      `;
+    }).join('');
+
+    menChips.querySelectorAll('[data-winner-gender="men"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!adminMenWinner) return;
+        adminMenWinner.value = btn.dataset.winnerName;
+        menChips.querySelectorAll('.admin-chip-btn').forEach((c) => c.classList.remove('is-selected'));
+        btn.classList.add('is-selected');
+        if (typeof updateAdminBadges === 'function') updateAdminBadges();
+      });
+    });
+  }
+
+  // Wire input listeners for live chip sync
+  if (adminWomenWinner && !adminWomenWinner.dataset.wired) {
+    adminWomenWinner.dataset.wired = 'true';
+    adminWomenWinner.addEventListener('input', () => {
+      const val = normalize(adminWomenWinner.value);
+      womenChips?.querySelectorAll('.admin-chip-btn').forEach((btn) => {
+        btn.classList.toggle('is-selected', normalize(btn.dataset.winnerName) === val);
+      });
+    });
+  }
+
+  if (adminMenWinner && !adminMenWinner.dataset.wired) {
+    adminMenWinner.dataset.wired = 'true';
+    adminMenWinner.addEventListener('input', () => {
+      const val = normalize(adminMenWinner.value);
+      menChips?.querySelectorAll('.admin-chip-btn').forEach((btn) => {
+        btn.classList.toggle('is-selected', normalize(btn.dataset.winnerName) === val);
+      });
+    });
+  }
+
+  // Wire clear buttons
+  const wClear = document.querySelector('#adminWomenWinnerClear');
+  if (wClear && !wClear.dataset.wired) {
+    wClear.dataset.wired = 'true';
+    wClear.addEventListener('click', () => {
+      if (adminWomenWinner) adminWomenWinner.value = '';
+      womenChips?.querySelectorAll('.admin-chip-btn').forEach((btn) => btn.classList.remove('is-selected'));
+    });
+  }
+
+  const mClear = document.querySelector('#adminMenWinnerClear');
+  if (mClear && !mClear.dataset.wired) {
+    mClear.dataset.wired = 'true';
+    mClear.addEventListener('click', () => {
+      if (adminMenWinner) adminMenWinner.value = '';
+      menChips?.querySelectorAll('.admin-chip-btn').forEach((btn) => btn.classList.remove('is-selected'));
+    });
   }
 }
 
-function renderAdminRosterSelection() {
-  const womenGrid = document.querySelector('#adminWomenRosterGrid');
-  const menGrid = document.querySelector('#adminMenRosterGrid');
+function updateRosterBadges() {
+  const womenInputs = Array.from(document.querySelectorAll('.roster-input[data-roster-gender="women"]'));
+  const menInputs = Array.from(document.querySelectorAll('.roster-input[data-roster-gender="men"]'));
   const womenCountEl = document.querySelector('#adminWomenSelectedCount');
   const menCountEl = document.querySelector('#adminMenSelectedCount');
   const rosterStatusBadge = document.querySelector('#rosterStatusBadge');
 
-  const wCount = adminRosterDraft.women.size;
-  const mCount = adminRosterDraft.men.size;
+  const wCount = womenInputs.filter((i) => i.value.trim().length > 0).length;
+  const mCount = menInputs.filter((i) => i.value.trim().length > 0).length;
 
   if (womenCountEl) {
     if (wCount === 6) {
-      womenCountEl.textContent = '6 / 6 SELECTED';
+      womenCountEl.textContent = '6 / 6 READY';
       womenCountEl.className = 'admin-cat-badge badge-yellow';
-    } else if (wCount < 6) {
-      womenCountEl.textContent = `${wCount} / 6 (PICK ${6 - wCount} MORE)`;
-      womenCountEl.className = 'admin-cat-badge badge-dim';
     } else {
-      womenCountEl.textContent = `${wCount} / 6 (REMOVE ${wCount - 6})`;
-      womenCountEl.className = 'admin-cat-badge badge-error';
+      womenCountEl.textContent = `${wCount} / 6 (${6 - wCount} EMPTY)`;
+      womenCountEl.className = 'admin-cat-badge badge-dim';
     }
   }
 
   if (menCountEl) {
     if (mCount === 6) {
-      menCountEl.textContent = '6 / 6 SELECTED';
+      menCountEl.textContent = '6 / 6 READY';
       menCountEl.className = 'admin-cat-badge badge-pink';
-    } else if (mCount < 6) {
-      menCountEl.textContent = `${mCount} / 6 (PICK ${6 - mCount} MORE)`;
-      menCountEl.className = 'admin-cat-badge badge-dim';
     } else {
-      menCountEl.textContent = `${mCount} / 6 (REMOVE ${mCount - 6})`;
-      menCountEl.className = 'admin-cat-badge badge-error';
+      menCountEl.textContent = `${mCount} / 6 (${6 - mCount} EMPTY)`;
+      menCountEl.className = 'admin-cat-badge badge-dim';
     }
   }
 
@@ -1443,64 +1550,89 @@ function renderAdminRosterSelection() {
       rosterStatusBadge.className = 'status-badge pending';
     }
   }
+}
 
-  if (womenGrid) {
-    womenGrid.innerHTML = ALL_COMPETITORS.women.map((c) => {
-      const isSelected = adminRosterDraft.women.has(c.name);
-      return `
-        <button type="button" class="roster-athlete-item ${isSelected ? 'is-selected' : ''}" data-roster-gender="women" data-roster-name="${escapeHtml(c.name)}">
-          <div class="roster-athlete-info">
-            <span class="roster-athlete-name">${escapeHtml(c.name)}</span>
-            <span class="roster-athlete-meta">${escapeHtml(c.flag)} ${escapeHtml(c.code)}</span>
-          </div>
-          <span class="roster-athlete-check">${isSelected ? '✓' : ''}</span>
-        </button>
-      `;
-    }).join('');
+function renderAdminRosterSelection(forceRebuild = false) {
+  const womenList = document.querySelector('#womenRosterInputsList');
+  const menList = document.querySelector('#menRosterInputsList');
+  if (!womenList || !menList) return;
+
+  // Datalists for quick completion of known competitors
+  const dlWomen = document.querySelector('#knownCompetitorsWomen');
+  const dlMen = document.querySelector('#knownCompetitorsMen');
+  if (dlWomen) {
+    dlWomen.innerHTML = ALL_COMPETITORS.women.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.flag)} ${escapeHtml(c.code)}</option>`).join('');
+  }
+  if (dlMen) {
+    dlMen.innerHTML = ALL_COMPETITORS.men.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.flag)} ${escapeHtml(c.code)}</option>`).join('');
   }
 
-  if (menGrid) {
-    menGrid.innerHTML = ALL_COMPETITORS.men.map((c) => {
-      const isSelected = adminRosterDraft.men.has(c.name);
-      return `
-        <button type="button" class="roster-athlete-item ${isSelected ? 'is-selected' : ''}" data-roster-gender="men" data-roster-name="${escapeHtml(c.name)}">
-          <div class="roster-athlete-info">
-            <span class="roster-athlete-name">${escapeHtml(c.name)}</span>
-            <span class="roster-athlete-meta">${escapeHtml(c.flag)} ${escapeHtml(c.code)}</span>
-          </div>
-          <span class="roster-athlete-check">${isSelected ? '✓' : ''}</span>
-        </button>
-      `;
-    }).join('');
+  // Check if inputs already exist in the DOM and we're not forcing rebuild
+  const existingWomenInputs = womenList.querySelectorAll('.roster-input');
+  if (existingWomenInputs.length === 6 && !forceRebuild) {
+    updateRosterBadges();
+    return;
   }
 
-  document.querySelectorAll('[data-roster-name]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const gender = btn.dataset.rosterGender;
-      const name = btn.dataset.rosterName;
-      const rosterMessage = document.querySelector('#adminRosterMessage');
-      if (rosterMessage) rosterMessage.textContent = '';
+  // Check if saved finalists exist in localStorage
+  let savedFinalists = null;
+  try {
+    const raw = localStorage.getItem('blok_active_finalists');
+    if (raw) savedFinalists = JSON.parse(raw);
+  } catch (e) {}
 
-      if (adminRosterDraft[gender].has(name)) {
-        adminRosterDraft[gender].delete(name);
-      } else {
-        if (adminRosterDraft[gender].size >= 6) {
-          if (rosterMessage) {
-            rosterMessage.textContent = `⚠️ You already selected 6 ${gender === 'women' ? 'women' : 'men'}. Uncheck one first!`;
-            rosterMessage.style.color = '#f87171';
-          }
-          return;
-        }
-        adminRosterDraft[gender].add(name);
-      }
-      renderAdminRosterSelection();
+  const initialWomen = savedFinalists?.women || [];
+  const initialMen = savedFinalists?.men || [];
+
+  const makeRow = (gender, index, value = '', datalistId) => `
+    <div class="roster-slot-row" id="slotRow_${gender}_${index}">
+      <span class="roster-slot-bib">#0${index + 1}</span>
+      <input type="text"
+             class="roster-input"
+             data-roster-gender="${gender}"
+             data-roster-index="${index}"
+             placeholder="Finalist #${index + 1} Full Name..."
+             list="${datalistId}"
+             value="${escapeHtml(value)}"
+             autocomplete="off"
+             spellcheck="false" />
+      <button type="button" class="roster-slot-clear" data-clear-gender="${gender}" data-clear-index="${index}" title="Clear slot">✕</button>
+    </div>
+  `;
+
+  womenList.innerHTML = Array.from({ length: 6 }).map((_, i) => makeRow('women', i, initialWomen[i] || '', 'knownCompetitorsWomen')).join('');
+  menList.innerHTML = Array.from({ length: 6 }).map((_, i) => makeRow('men', i, initialMen[i] || '', 'knownCompetitorsMen')).join('');
+
+  // Wire input listeners for live counter
+  document.querySelectorAll('.roster-input').forEach((inp) => {
+    inp.addEventListener('input', () => {
+      inp.closest('.roster-slot-row')?.classList.remove('is-empty-warning');
+      const msg = document.querySelector('#adminRosterMessage');
+      if (msg) msg.textContent = '';
+      updateRosterBadges();
     });
   });
+
+  // Wire clear buttons
+  document.querySelectorAll('.roster-slot-clear').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const g = btn.dataset.clearGender;
+      const idx = btn.dataset.clearIndex;
+      const targetInput = document.querySelector(`.roster-input[data-roster-gender="${g}"][data-roster-index="${idx}"]`);
+      if (targetInput) {
+        targetInput.value = '';
+        targetInput.focus();
+        updateRosterBadges();
+      }
+    });
+  });
+
+  updateRosterBadges();
 }
 
 async function saveActiveFinalists(womenNames, menNames) {
   if (!Array.isArray(womenNames) || womenNames.length !== 6 || !Array.isArray(menNames) || menNames.length !== 6) {
-    throw new Error('Please select exactly 6 women and 6 men finalists.');
+    throw new Error('Please enter exactly 6 women and 6 men finalists.');
   }
 
   FINALISTS = buildFinalistsObject(womenNames, menNames);
@@ -1534,34 +1666,99 @@ async function saveActiveFinalists(womenNames, menNames) {
   renderWomenFinalistPool();
   renderMenFinalistPool();
   renderAdminFinalistOptions();
-  renderAdminRosterSelection();
   render();
 }
 
+// Reset / Clear All Slots Button
 const resetRosterBtn = document.querySelector('#resetRosterBtn');
 if (resetRosterBtn) {
   resetRosterBtn.addEventListener('click', () => {
-    adminRosterDraft.women.clear();
-    adminRosterDraft.men.clear();
+    document.querySelectorAll('.roster-input').forEach((inp) => {
+      inp.value = '';
+      inp.closest('.roster-slot-row')?.classList.remove('is-empty-warning');
+    });
     const rosterMessage = document.querySelector('#adminRosterMessage');
     if (rosterMessage) {
-      rosterMessage.textContent = 'All finalists deselected. Select 6 women and 6 men one by one.';
+      rosterMessage.textContent = 'All finalist slots cleared. Enter the 6 women and 6 men by hand.';
       rosterMessage.style.color = 'var(--chalk-dim)';
     }
-    renderAdminRosterSelection();
+    updateRosterBadges();
   });
 }
 
+// Load Demo Names Button (for easy testing)
+const loadDemoFinalistsBtn = document.querySelector('#loadDemoFinalistsBtn');
+if (loadDemoFinalistsBtn) {
+  loadDemoFinalistsBtn.addEventListener('click', () => {
+    const wInputs = document.querySelectorAll('.roster-input[data-roster-gender="women"]');
+    const mInputs = document.querySelectorAll('.roster-input[data-roster-gender="men"]');
+    DEFAULT_FINALIST_NAMES.women.forEach((name, i) => { if (wInputs[i]) wInputs[i].value = name; });
+    DEFAULT_FINALIST_NAMES.men.forEach((name, i) => { if (mInputs[i]) mInputs[i].value = name; });
+    document.querySelectorAll('.roster-slot-row').forEach((r) => r.classList.remove('is-empty-warning'));
+    const rosterMessage = document.querySelector('#adminRosterMessage');
+    if (rosterMessage) {
+      rosterMessage.textContent = 'Loaded demo qualification finalists into slots.';
+      rosterMessage.style.color = 'var(--tape-yellow-soft)';
+    }
+    updateRosterBadges();
+  });
+}
+
+// Quick Paste Handlers
+const pasteToWomenBtn = document.querySelector('#pasteToWomenBtn');
+if (pasteToWomenBtn) {
+  pasteToWomenBtn.addEventListener('click', () => {
+    const ta = document.querySelector('#rosterPasteArea');
+    if (!ta) return;
+    const lines = ta.value.split('\n').map((l) => l.trim()).filter(Boolean);
+    const wInputs = document.querySelectorAll('.roster-input[data-roster-gender="women"]');
+    wInputs.forEach((inp, i) => {
+      if (lines[i]) inp.value = lines[i];
+    });
+    updateRosterBadges();
+  });
+}
+
+const pasteToMenBtn = document.querySelector('#pasteToMenBtn');
+if (pasteToMenBtn) {
+  pasteToMenBtn.addEventListener('click', () => {
+    const ta = document.querySelector('#rosterPasteArea');
+    if (!ta) return;
+    const lines = ta.value.split('\n').map((l) => l.trim()).filter(Boolean);
+    const mInputs = document.querySelectorAll('.roster-input[data-roster-gender="men"]');
+    mInputs.forEach((inp, i) => {
+      if (lines[i]) inp.value = lines[i];
+    });
+    updateRosterBadges();
+  });
+}
+
+// Save / Publish 12 Finalists Button
 const saveFinalistsBtn = document.querySelector('#saveFinalistsBtn');
 if (saveFinalistsBtn) {
   saveFinalistsBtn.addEventListener('click', async () => {
     const rosterMessage = document.querySelector('#adminRosterMessage');
-    const wCount = adminRosterDraft.women.size;
-    const mCount = adminRosterDraft.men.size;
+    const wInputs = Array.from(document.querySelectorAll('.roster-input[data-roster-gender="women"]'));
+    const mInputs = Array.from(document.querySelectorAll('.roster-input[data-roster-gender="men"]'));
 
-    if (wCount !== 6 || mCount !== 6) {
+    let hasEmpty = false;
+    wInputs.forEach((inp) => {
+      const isEmpty = !inp.value.trim();
+      inp.closest('.roster-slot-row')?.classList.toggle('is-empty-warning', isEmpty);
+      if (isEmpty) hasEmpty = true;
+    });
+    mInputs.forEach((inp) => {
+      const isEmpty = !inp.value.trim();
+      inp.closest('.roster-slot-row')?.classList.toggle('is-empty-warning', isEmpty);
+      if (isEmpty) hasEmpty = true;
+    });
+
+    const womenNames = wInputs.map((i) => i.value.trim()).filter(Boolean);
+    const menNames = mInputs.map((i) => i.value.trim()).filter(Boolean);
+
+    if (womenNames.length !== 6 || menNames.length !== 6) {
       if (rosterMessage) {
-        rosterMessage.textContent = `⚠️ Please select exactly 6 women and 6 men (currently: ${wCount} women, ${mCount} men).`;
+        rosterMessage.textContent = `⚠️ Please fill all 6 women and all 6 men slots (currently: ${womenNames.length} women, ${menNames.length} men).`;
         rosterMessage.style.color = '#f87171';
       }
       return;
@@ -1574,7 +1771,7 @@ if (saveFinalistsBtn) {
     }
 
     try {
-      await saveActiveFinalists(Array.from(adminRosterDraft.women), Array.from(adminRosterDraft.men));
+      await saveActiveFinalists(womenNames, menNames);
       if (rosterMessage) {
         rosterMessage.textContent = '✓ 12 Finalists successfully published & locked for voting!';
         rosterMessage.style.color = 'var(--tape-yellow-soft)';
@@ -1733,6 +1930,7 @@ if (officialResultsForm) {
       if (adminWomenAttTop) adminWomenAttTop.value = '';
       if (adminWomenAttZone) adminWomenAttZone.value = '';
       if (adminWomenBadge) adminWomenBadge.textContent = '—';
+      document.querySelectorAll('#adminWomenWinnerChips .admin-chip-btn').forEach((b) => b.classList.remove('is-selected'));
 
       if (adminMenWinner) adminMenWinner.value = '';
       if (adminMenTops) adminMenTops.value = '';
@@ -1740,6 +1938,7 @@ if (officialResultsForm) {
       if (adminMenAttTop) adminMenAttTop.value = '';
       if (adminMenAttZone) adminMenAttZone.value = '';
       if (adminMenBadge) adminMenBadge.textContent = '—';
+      document.querySelectorAll('#adminMenWinnerChips .admin-chip-btn').forEach((b) => b.classList.remove('is-selected'));
 
       // 3. Update Supabase if connected
       if (remoteEnabled) {
@@ -1965,11 +2164,206 @@ if (clearDataBtn) {
 }
 
 
+// ================= EVENT QR CODE ENGINE =================
+let screenQrInstance = null;
+
+function getQrTargetUrl() {
+  const saved = localStorage.getItem('blok_qr_custom_url');
+  if (saved && saved.trim()) return saved.trim();
+  if (window.location.protocol.startsWith('http') && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+    return window.location.origin + window.location.pathname;
+  }
+  return 'https://blok-prediction.onrender.com';
+}
+
+function renderQrCode(customUrl) {
+  const targetUrl = customUrl || getQrTargetUrl();
+  const qrContainer = document.querySelector('#qrCodeContainer');
+  const urlInput = document.querySelector('#qrTargetUrl');
+  const modalUrlDisplay = document.querySelector('#modalUrlDisplay');
+
+  if (urlInput) urlInput.value = targetUrl;
+  if (modalUrlDisplay) {
+    modalUrlDisplay.textContent = targetUrl.replace(/^https?:\/\//, '');
+  }
+
+  if (typeof QRCode === 'undefined') {
+    console.warn('QRCode library not ready yet');
+    return;
+  }
+
+  if (qrContainer) {
+    qrContainer.innerHTML = '';
+    screenQrInstance = new QRCode(qrContainer, {
+      text: targetUrl,
+      width: 280,
+      height: 280,
+      colorDark: '#140d12',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }
+}
+
+function updateQrTargetUrl(newUrl) {
+  const clean = (newUrl || '').trim();
+  if (!clean) return;
+  localStorage.setItem('blok_qr_custom_url', clean);
+  renderQrCode(clean);
+  const feedback = document.querySelector('#qrUrlFeedback');
+  if (feedback) {
+    feedback.textContent = '✓ Saved! QR updated.';
+    setTimeout(() => {
+      if (feedback) feedback.textContent = '';
+    }, 2500);
+  }
+}
+
+function setQrModal(open, pushHistory = true) {
+  const modal = document.querySelector('#qrModal');
+  if (!modal) return;
+  const wasOpen = !modal.hidden;
+  modal.hidden = !open;
+  modal.setAttribute('aria-hidden', String(!open));
+  document.body.style.overflow = open ? 'hidden' : '';
+
+  if (open) {
+    renderQrCode();
+    if (!wasOpen && pushHistory) {
+      const activeView = document.querySelector('.app-view.is-active')?.dataset.view || 'welcome';
+      history.pushState({ view: activeView, modal: 'qr' }, '', '#qr');
+    }
+  } else if (wasOpen && pushHistory && history.state?.modal === 'qr') {
+    window.history.back();
+  }
+}
+
+function downloadScreenQrPng() {
+  const targetUrl = getQrTargetUrl();
+  const custom = localStorage.getItem('blok_qr_custom_url');
+
+  // If pointing to official Render production, download pristine 2000x2000px asset
+  if (!custom || custom === 'https://blok-prediction.onrender.com') {
+    const link = document.createElement('a');
+    link.download = 'blok-qr-hires.png';
+    link.href = 'qr_code_hires.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+
+  // Otherwise generate high-res on-the-fly for the custom URL
+  const tempBox = document.createElement('div');
+  new QRCode(tempBox, {
+    text: targetUrl,
+    width: 2000,
+    height: 2000,
+    colorDark: '#140d12',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  setTimeout(() => {
+    const canvas = tempBox.querySelector('canvas');
+    const img = tempBox.querySelector('img');
+    const dataUrl = canvas ? canvas.toDataURL('image/png') : (img ? img.src : '');
+    if (!dataUrl) return;
+
+    const link = document.createElement('a');
+    link.download = 'blok-qr-custom.png';
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, 120);
+}
+
+// QR DOM Event Listeners
+const qrToggleBtn = document.querySelector('#qrToggle');
+if (qrToggleBtn) qrToggleBtn.addEventListener('click', () => setQrModal(true));
+
+const adminOpenQrBtn = document.querySelector('#adminOpenQrBtn');
+if (adminOpenQrBtn) adminOpenQrBtn.addEventListener('click', () => setQrModal(true));
+
+const qrCloseBtn = document.querySelector('#qrCloseBtn');
+if (qrCloseBtn) qrCloseBtn.addEventListener('click', () => setQrModal(false));
+
+const qrModalEl = document.querySelector('#qrModal');
+if (qrModalEl) {
+  qrModalEl.addEventListener('click', (e) => {
+    if (e.target === qrModalEl) setQrModal(false);
+  });
+}
+
+const qrUpdateBtn = document.querySelector('#qrUpdateBtn');
+if (qrUpdateBtn) {
+  qrUpdateBtn.addEventListener('click', () => {
+    const input = document.querySelector('#qrTargetUrl');
+    if (input) updateQrTargetUrl(input.value);
+  });
+}
+
+const qrTargetUrlInput = document.querySelector('#qrTargetUrl');
+if (qrTargetUrlInput) {
+  qrTargetUrlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      updateQrTargetUrl(qrTargetUrlInput.value);
+    }
+  });
+}
+
+const downloadQrBtn = document.querySelector('#downloadQrBtn');
+if (downloadQrBtn) downloadQrBtn.addEventListener('click', downloadScreenQrPng);
+
 // ================= GENERAL NAVIGATION & SETUP =================
-document.querySelector('#adminToggle').addEventListener('click', () => {
+document.querySelector('#adminToggle').addEventListener('click', async () => {
+  isAdmin = await checkAdmin();
   setPanel(true);
   updateAdminUi();
 });
+
+// Admin Login Form Submission
+const adminLoginForm = document.querySelector('#adminLoginForm');
+if (adminLoginForm) {
+  adminLoginForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!remoteEnabled) return;
+    const email = document.querySelector('#adminEmail').value.trim();
+    const password = document.querySelector('#adminPassword').value;
+    const submitBtn = adminLoginForm.querySelector('button[type="submit"]');
+
+    adminAuthMessage.textContent = 'Verifying credentials…';
+    adminAuthMessage.classList.remove('error');
+    setSubmitting(submitBtn, true);
+
+    try {
+      const response = await database.auth.signInWithPassword({ email, password });
+      if (response.error) {
+        adminAuthMessage.textContent = 'Invalid email or password.';
+        adminAuthMessage.classList.add('error');
+        return;
+      }
+      isAdmin = await checkAdmin();
+      if (!isAdmin) {
+        adminAuthMessage.textContent = 'This account does not have organizer permissions.';
+        adminAuthMessage.classList.add('error');
+        await database.auth.signOut();
+        return;
+      }
+      adminAuthMessage.textContent = '';
+      await refresh();
+      updateAdminUi();
+    } catch (err) {
+      console.error(err);
+      adminAuthMessage.textContent = 'Connection error. Please try again.';
+      adminAuthMessage.classList.add('error');
+    } finally {
+      setSubmitting(submitBtn, false);
+    }
+  });
+}
 
 document.querySelectorAll('[data-view-target]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -2009,7 +2403,11 @@ refresh();
 const hash = window.location.hash.replace('#', '');
 if (hash === 'admin') {
   history.replaceState({ view: 'welcome' }, '', '#welcome');
-  setPanel(true, true);
+  checkAdmin().then((admin) => {
+    isAdmin = admin;
+    setPanel(true, true);
+    updateAdminUi();
+  });
 } else if (hash && hash !== 'welcome') {
   const initialView = hash === 'home' ? 'welcome' : hash;
   showView(initialView, false);
@@ -2020,6 +2418,17 @@ if (hash === 'admin') {
 
 // Mobile Native Edge-Swipe & Popstate Navigation (prevents app from closing on swipe back!)
 window.addEventListener('popstate', (event) => {
+  // If the QR modal was open and popstate navigated away from modal, close modal!
+  const qrModal = document.querySelector('#qrModal');
+  if (qrModal && !qrModal.hidden && event.state?.modal !== 'qr') {
+    setQrModal(false, false);
+    return;
+  }
+  if (event.state?.modal === 'qr') {
+    setQrModal(true, false);
+    return;
+  }
+
   // If the admin panel was open and popstate navigated away from admin, close the panel without exiting app!
   if (adminPanel && !adminPanel.hidden && event.state?.panel !== 'admin') {
     setPanel(false, false);
@@ -2028,7 +2437,11 @@ window.addEventListener('popstate', (event) => {
 
   // If popstate targets admin panel
   if (event.state?.panel === 'admin') {
-    setPanel(true, false);
+    checkAdmin().then((admin) => {
+      isAdmin = admin;
+      setPanel(true, false);
+      updateAdminUi();
+    });
     return;
   }
 

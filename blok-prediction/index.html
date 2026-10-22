@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=Permanent+Marker&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5.9" />
+  <link rel="stylesheet" href="styles.css?v=6.5" />
   <link rel="stylesheet" href="contact.css?v=2.9" />
 </head>
 <body>
@@ -34,9 +34,14 @@
             <span class="logo-mark">BLOK</span>
             <span class="logo-sticker">OPEN XXL</span>
           </a>
-          <button class="header-link" id="adminToggle" aria-expanded="false" aria-controls="adminPanel">
-            ORG. <span>↗</span>
-          </button>
+          <div class="header-actions">
+            <button type="button" class="header-link header-qr-btn" id="qrToggle" aria-label="Open Event QR Code">
+              <span>📲</span> QR
+            </button>
+            <button class="header-link" id="adminToggle" aria-expanded="false" aria-controls="adminPanel">
+              ORG. <span>↗</span>
+            </button>
+          </div>
         </header>
 
         <div class="welcome-content">
@@ -44,7 +49,7 @@
 
           <div class="deadline-pill" id="deadlineNote">
             <span class="status-dot"></span>
-            <span>Predictions open until <b>20:00</b> · Finals at <b>20:30</b></span>
+            <span>Predictions open until <b>20:30</b> · Finals start at <b>20:30</b></span>
           </div>
         </div>
 
@@ -420,7 +425,7 @@
             </div>
           </div>
 
-          <p class="good-luck-note">Scoring: +50 Winner name · +20 Tops · +15 Zones · +15 Top att · +10 Zone att · +25 Full exact bonus (Max 270 pts). Watch the finals ceremony to see the leaderboard!</p>
+          <p class="good-luck-note"><b>Prize rule:</b> Matching both champions (Women + Men) takes #1 priority. Predicted IFSC scores break ties to crown the winners!</p>
         </div>
 
         <div class="bottom-actions">
@@ -468,7 +473,7 @@
     <p class="admin-intro">Manage competition status, enter official finals results, and calculate contest winners.</p>
 
     <!-- Admin Auth Form -->
-    <div id="adminAuth" class="admin-auth" hidden>
+    <div id="adminAuth" class="admin-auth">
       <p>Sign in with your authorized organizer account.</p>
       <form id="adminLoginForm">
         <label for="adminEmail">EMAIL</label>
@@ -481,7 +486,7 @@
     </div>
 
     <!-- Admin Controls -->
-    <div id="adminControls">
+    <div id="adminControls" hidden>
       <!-- Section 1: Competition Status & Pool Control -->
       <section class="admin-card admin-status-card">
         <div class="admin-card-head status-card-head">
@@ -495,41 +500,82 @@
         <button type="button" id="toggleOpen" class="admin-toggle-btn toggle-open">CLOSE PREDICTIONS NOW</button>
       </section>
 
-      <!-- Section 1.5: Finalists Selection (6 Women & 6 Men from 28 Athletes) -->
+      <!-- Section 1.2: Spectator QR Code -->
+      <section class="admin-card admin-qr-quick-card">
+        <div class="admin-card-head status-card-head">
+          <div>
+            <span class="micro-label">SPECTATOR ACCESS</span>
+            <h3>EVENT QR CODE</h3>
+          </div>
+          <button type="button" id="adminOpenQrBtn" class="btn-roster-reset">OPEN QR ↗</button>
+        </div>
+        <p class="admin-card-sub">Official QR pointing to Render (<code>blok-prediction.onrender.com</code>). Standalone PNG assets for flyer and poster designers.</p>
+
+        <!-- URL Configuration Field (Organizer Only) -->
+        <div class="qr-url-box admin-qr-url-box">
+          <label for="qrTargetUrl" class="qr-url-label">EVENT URL (WHERE QR POINTS)</label>
+          <div class="qr-url-input-row">
+            <input type="url" id="qrTargetUrl" class="qr-url-input" spellcheck="false" autocomplete="off" />
+            <button type="button" id="qrUpdateBtn" class="btn-qr-update">UPDATE</button>
+          </div>
+          <div class="qr-url-meta">
+            <small class="qr-url-note">Live production URL on Render: <b>blok-prediction.onrender.com</b></small>
+            <span id="qrUrlFeedback" class="qr-url-feedback"></span>
+          </div>
+        </div>
+
+        <button type="button" id="adminQuickQrBtn" class="admin-toggle-btn btn-print-quick" onclick="document.querySelector('#adminOpenQrBtn').click()">📲 VIEW &amp; DOWNLOAD QR</button>
+      </section>
+
+      <!-- Section 1.5: Finalists Manual Entry (6 Women & 6 Men) -->
       <section class="admin-card admin-roster-card" id="adminRosterCard">
         <div class="admin-card-head status-card-head">
           <div>
             <span class="micro-label">ATHLETES ROSTER</span>
-            <h3>SELECT FINALISTS</h3>
+            <h3>SET 12 FINALISTS</h3>
           </div>
           <div class="roster-head-actions">
-            <button type="button" id="resetRosterBtn" class="btn-roster-reset" title="Deselect all to pick one by one">↺ DESELECT ALL</button>
+            <button type="button" id="loadDemoFinalistsBtn" class="btn-roster-reset" title="Fill with demo names for testing">🎲 DEMO</button>
+            <button type="button" id="resetRosterBtn" class="btn-roster-reset" title="Clear all slots">↺ CLEAR ALL</button>
             <span id="rosterStatusBadge" class="status-badge pending">0 / 12</span>
           </div>
         </div>
-        <p class="admin-card-sub">Choose the 6 women and 6 men who qualified from the semi-finals. Select them one by one from the qualification roster below.</p>
+        <p class="admin-card-sub">Type the names of the 6 female and 6 male finalists once qualification results are in. These 12 athletes will immediately become the prediction options for spectators.</p>
 
-        <!-- Women Finalists Roster Selector -->
+        <!-- Women Finalists Manual Input Section -->
         <div class="admin-category-card admin-cat-women roster-cat-card">
           <div class="admin-category-header">
             <div class="admin-tape-banner tape-yellow-banner">
               <span>WOMEN FINALISTS</span>
             </div>
-            <span class="admin-cat-badge badge-dim" id="adminWomenSelectedCount">0 / 6 (PICK 6)</span>
+            <span class="admin-cat-badge badge-dim" id="adminWomenSelectedCount">0 / 6 (6 EMPTY)</span>
           </div>
-          <div class="admin-roster-grid" id="adminWomenRosterGrid"></div>
+          <div class="roster-inputs-list" id="womenRosterInputsList"></div>
         </div>
 
-        <!-- Men Finalists Roster Selector -->
+        <!-- Men Finalists Manual Input Section -->
         <div class="admin-category-card admin-cat-men roster-cat-card">
           <div class="admin-category-header">
             <div class="admin-tape-banner tape-pink-banner">
               <span>MEN FINALISTS</span>
             </div>
-            <span class="admin-cat-badge badge-dim" id="adminMenSelectedCount">0 / 6 (PICK 6)</span>
+            <span class="admin-cat-badge badge-dim" id="adminMenSelectedCount">0 / 6 (6 EMPTY)</span>
           </div>
-          <div class="admin-roster-grid" id="adminMenRosterGrid"></div>
+          <div class="roster-inputs-list" id="menRosterInputsList"></div>
         </div>
+
+        <!-- Optional Quick Paste Box -->
+        <details class="roster-paste-details">
+          <summary class="roster-paste-summary">📋 PASTE 6 NAMES AT ONCE (OPTIONAL)</summary>
+          <div class="roster-paste-body">
+            <p class="roster-paste-hint">Paste 6 names on separate lines to quickly populate either category:</p>
+            <textarea id="rosterPasteArea" class="roster-paste-textarea" rows="6" placeholder="Name 1&#10;Name 2&#10;Name 3&#10;Name 4&#10;Name 5&#10;Name 6"></textarea>
+            <div class="roster-paste-buttons">
+              <button type="button" id="pasteToWomenBtn" class="btn-paste-fill">PASTE TO WOMEN (6)</button>
+              <button type="button" id="pasteToMenBtn" class="btn-paste-fill">PASTE TO MEN (6)</button>
+            </div>
+          </div>
+        </details>
 
         <div class="admin-calc-actions">
           <button type="button" id="saveFinalistsBtn" class="admin-calc-btn">
@@ -538,6 +584,10 @@
           </button>
         </div>
         <p id="adminRosterMessage" class="form-message" role="status"></p>
+
+        <!-- Datalists for autocompletion -->
+        <datalist id="knownCompetitorsWomen"></datalist>
+        <datalist id="knownCompetitorsMen"></datalist>
       </section>
 
       <!-- Section 2: Official Finals Results (Women First) -->
@@ -561,9 +611,26 @@
               </div>
               <span class="admin-cat-badge badge-yellow" id="adminWomenLiveScore">—</span>
             </div>
-            <select id="adminWomenWinner" class="admin-select select-women" required>
-              <option value="" disabled selected>Select Women's Champion...</option>
-            </select>
+            <!-- Quick-Tap Finalist Chips -->
+            <div class="admin-winner-chips-wrap">
+              <span class="admin-chips-label">TAP OFFICIAL FINALIST CHAMPION:</span>
+              <div class="admin-winner-chips" id="adminWomenWinnerChips" aria-label="Women Finalist Chips"></div>
+            </div>
+
+            <!-- Manual Winner Input Row -->
+            <div class="admin-winner-input-row roster-slot-row">
+              <span class="roster-slot-bib">🏆</span>
+              <input 
+                type="text" 
+                id="adminWomenWinner" 
+                class="roster-input admin-winner-input select-women" 
+                placeholder="Type women's champion name..." 
+                list="knownCompetitorsWomen" 
+                autocomplete="off" 
+                required 
+              />
+              <button type="button" class="roster-slot-clear" id="adminWomenWinnerClear" title="Clear winner">✕</button>
+            </div>
             <div class="admin-score-grid">
               <div class="admin-score-input-wrap">
                 <label for="adminWomenTops">TOPS (T)</label>
@@ -592,9 +659,26 @@
               </div>
               <span class="admin-cat-badge badge-pink" id="adminMenLiveScore">—</span>
             </div>
-            <select id="adminMenWinner" class="admin-select select-men" required>
-              <option value="" disabled selected>Select Men's Champion...</option>
-            </select>
+            <!-- Quick-Tap Finalist Chips -->
+            <div class="admin-winner-chips-wrap">
+              <span class="admin-chips-label">TAP OFFICIAL FINALIST CHAMPION:</span>
+              <div class="admin-winner-chips" id="adminMenWinnerChips" aria-label="Men Finalist Chips"></div>
+            </div>
+
+            <!-- Manual Winner Input Row -->
+            <div class="admin-winner-input-row roster-slot-row">
+              <span class="roster-slot-bib">🏆</span>
+              <input 
+                type="text" 
+                id="adminMenWinner" 
+                class="roster-input admin-winner-input select-men" 
+                placeholder="Type men's champion name..." 
+                list="knownCompetitorsMen" 
+                autocomplete="off" 
+                required 
+              />
+              <button type="button" class="roster-slot-clear" id="adminMenWinnerClear" title="Clear winner">✕</button>
+            </div>
             <div class="admin-score-grid">
               <div class="admin-score-input-wrap">
                 <label for="adminMenTops">TOPS (T)</label>
@@ -672,8 +756,46 @@
 
   <div class="panel-scrim" id="panelScrim" hidden></div>
 
+  <!-- ================= QR CODE MODAL ================= -->
+  <div class="qr-modal-backdrop" id="qrModal" hidden aria-hidden="true" role="dialog" aria-labelledby="qrModalTitle">
+    <div class="qr-modal-card">
+      <div class="qr-modal-head">
+        <div>
+          <span class="micro-label">SPECTATOR ACCESS</span>
+          <h3 id="qrModalTitle">EVENT QR CODE</h3>
+        </div>
+        <button type="button" class="qr-modal-close" id="qrCloseBtn" aria-label="Close QR Modal">✕</button>
+      </div>
+
+      <p class="qr-modal-sub">Spectators scan with their mobile camera to enter predictions immediately.</p>
+
+      <!-- Large QR Display -->
+      <div class="qr-card-display">
+        <div id="qrCodeContainer" class="qr-code-box"></div>
+        <span class="qr-scan-hint">⚡ SCAN TO PLACE YOUR BETS</span>
+      </div>
+
+      <!-- Clean URL Display Tag for Spectators -->
+      <div class="qr-modal-url-badge">
+        <span class="qr-modal-url-tag">LINK:</span>
+        <span class="qr-modal-url-val" id="modalUrlDisplay">blok-prediction.onrender.com</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="qr-modal-actions">
+        <button type="button" id="downloadQrBtn" class="btn-qr-action btn-qr-hires">
+          <span>💾 DOWNLOAD HIGH-RES (PNG)</span>
+        </button>
+        <a href="qr_code_transparent.png" download="blok-qr-transparent.png" class="btn-qr-action btn-qr-transparent">
+          <span>✨ TRANSPARENT BACKGROUND (PNG)</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=5.9"></script>
+  <script src="qrcode.min.js"></script>
+  <script src="app.js?v=6.9"></script>
 </body>
 </html>

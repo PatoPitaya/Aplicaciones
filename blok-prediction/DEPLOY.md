@@ -15,10 +15,13 @@ La app es estática: no hay compilación. Solo hay que configurar Supabase y sub
 6. **Project Settings > API**: copia *Project URL* y la clave *anon public* en `supabase-config.js`.
    Nunca uses la clave `service_role`.
 
-## 2. Publicar
+## 2. Publicación activa en Render
 
-Opción más rápida: https://app.netlify.com/drop y arrastra la carpeta `blok-prediction`.
-Alternativas: Vercel o GitHub Pages (basta con subir los archivos tal cual).
+La aplicación está desplegada y activa en Render:
+- **URL de Producción:** https://blok-prediction.onrender.com
+- **Código QR oficial:** Apunta a `https://blok-prediction.onrender.com`
+- **Archivos para diseñadores:** `qr_code_hires.png` (PNG 2000x2000) y `qr_code_transparent.png` (PNG transparente 2000x2000).
+- Al hacer `git push` a la rama `main`, Render actualiza automáticamente el sitio web estático.
 
 ## 3. Prueba antes del evento
 

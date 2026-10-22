@@ -36,7 +36,7 @@ A sleek, mobile-first web app for attendees at **Klimzaal Blok** (Hoboken, Antwe
    insert into public.admin_users (user_id) values ('PASTE-ORGANIZATION-UUID-HERE');
    ```
 5. Copy your project URL and `anon` public key into `supabase-config.js`.
-6. Deploy the folder to GitHub Pages, Netlify, Vercel, or Render. Generate a QR code pointing to the live URL for attendees to scan at the gym!
+6. Deploy to Render (live production URL: `https://blok-prediction.onrender.com`). QR code assets (`qr_code_hires.png`, `qr_code_transparent.png`) point to this production URL.
 
 ---
 
