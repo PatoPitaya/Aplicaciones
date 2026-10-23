@@ -22,10 +22,10 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
 4. **Gamification & Dual IFSC Scoring:**
    - **Live Crowd Odds:** Computes live prediction percentages per climber with sleek progress bars before results are announced.
    - **Contest Leaderboard:** After organizers declare the official IFSC scores, the public screen crowns the #1 Grand Winner(s) and displays the full ranked leaderboard sorted by total points and IFSC tiebreaker closeness. (Lucky Draw raffle discontinued in favor of skill-based IFSC scoring).
-5. **Database & Technical:**
-   - Unique constraint updated to prevent multiple entries per contact (email/phone), without blocking distinct participants who share the same first name.
-   - GDPR privacy note displayed for contact input.
-   - Dual IFSC prediction encoding compactly stored for both categories.
+5. **Database & Fraud Prevention (1 Vote Per Person):**
+   - **Strict International Mobile Validation:** Validates real European and international mobile structures (Belgium `+32 4xx` / `04xx`, Netherlands `+31 6xx`, France `+33 6/7xx`, Germany `+49 1xx`, UK `+44 7xx`, Spain `+34 6/7xx`, Italy `+39 3xx`, E.164 ITU). Automatically auto-corrects Belgian local `04xx` numbers to `+324xx` and removes trunk zeros like `+3204...` -> `+324...`. Completely rejects invented junk numbers like `23983057` (missing country code) or `+320985934` (invalid Belgian format and length).
+   - **Unique Number Enforcement:** Once a phone number has submitted a prediction, it is recorded in Supabase (`prediction_contacts` table with unique constraint) and in local state. Any attempt to submit another prediction using that same phone number is rejected with *"This phone number has already submitted a prediction."*
+   - **Clean Landing Page:** The home page button always displays `"PLACE YOUR BETS →"` to provide a clean and consistent landing page for all spectators.
 
 6. **Linear & Clean Sequential Prediction Flow (WOMEN FIRST):**
    - **Step 0 (Details modal):** Participant enters Full Name with `#ffffff` text on solid `#0a0309` cards.
@@ -48,13 +48,18 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
    - **Full Back Navigation:** Each step has a functioning `← BACK` button preserving previous choices.
 7. **Organized & Minimalist Admin Panel & Password Protection:**
    - **Password-Protected Access:** The organizer drawer (`ORG. ↗`, `#adminPanel`) is protected by Supabase authentication (`database.auth.signInWithPassword`). Spectators opening the drawer see a secure authentication form (`#adminAuth`) requiring an authorized organizer Email and Password. Upon signing in, Supabase validates the credentials and activates `#adminControls`, revealing competition toggles, roster management, official results forms, and entries feeds. Includes an authorized `LOG OUT` button (`#adminLogout`) at the bottom.
-   - Clean, modular structure: Section 1 (Event Control & Betting Status), Section 1.2 (Spectator QR Code & URL configuration), Section 1.5 (Athletes Roster & Finalists Selection: 6 Women + 6 Men chosen from the 28 qualification competitors), Section 2 (Official Finals Results Form & Calculation), Section 3 (Live Entries Feed & Statistics with one-click 100 test voter seed), and Section 4 (Safe collapsible participant records deletion).
+   - Clean, modular structure: Section 1 (Event Control & Betting Status), Section 1.2 (Spectator QR Code & URL configuration), Section 1.5 (Athletes Roster & Finalists Selection: 6 Women + 6 Men chosen from the 28 qualification competitors), Section 2 (Official Finals Results Form & Calculation), Section 3 (Live Entries Feed & Statistics), and Section 4 (Safe collapsible participant records deletion).
    - **Dynamic Finalists Selection (12 Finalists):** Master catalog of 28 athletes (12 Women, 16 Men) grouped by country. In the organizer console (Section 1.5), athletes start completely **deselected** (`0 / 6 SELECTED`) so organizers can choose the 6 female and 6 male finalists one by one with live progress counters. Includes a quick `"↺ DESELECT ALL"` button to reset all selections from scratch at any moment. Clicking `"⚡ PUBLISH & LOCK 12 FINALISTS"` locks the selection, updates the spectator voting pools, the admin results dropdowns, and syncs across devices via `localStorage` and Supabase `active_finalists`.
    - **Instant Optimistic Toggling:** The predictions toggle button (`#toggleOpen`) updates the UI instantly (turning the status badge and button red for closed, yellow for open) with zero latency, and syncs to Supabase in the background. Gating `!isAdmin` check and blocking `window.confirm` dialogs removed.
    - **Safe Data Reset:** `#clearData` relocated to the very bottom inside a closed `<details class="admin-danger-zone">` to prevent accidental data wipes.
-8. **Test Mode (Name-Only & 100 Seeded Voters):**
-   - **Name-Only Voting:** Form simplified to ask only for Full Name (email and phone hidden/optional). No duplicate blocking — users can submit multiple votes for testing without restrictions.
-   - **100 Seeded Predictions:** Database populated with 100 realistic community votes distributed across the active finalists, ready for testing the winner publication, crowd odds scoreboard, and dual IFSC points ranking.
+8. **International Mobile Verification & Duplicate Voter Blocking:**
+   - **Step 0 Mandatory Fields:** Full Name (`participantName`) and Mobile Phone Number (`participantPhone`).
+   - **Broad International Support:** Accommodates Belgium (`+32`, `04...`), Netherlands (`+31`), France (`+33`), Germany (`+49`), UK (`+44`), and any worldwide mobile prefix (7 to 16 digits).
+   - **Multi-Country Smart Normalization (`normalizePhoneNumber` & `arePhoneNumbersEqual`):** Handles `+` prefixes, `00` dialing codes, stripping European trunk notation `(0)`, and comparing subscriber digits so `+32470...` and `0470...` are recognized as the exact same phone number.
+   - **3-Layer Duplicate Protection:**
+     1. *Client Browser Layer:* Checks `localStorage.blok_voted_phone` to block repeat attempts from the same device.
+     2. *Instant Step 0 Layer:* Checks `state.entries` and Supabase `prediction_contacts` on Step 0 submission, preventing duplicate voters from progressing.
+     3. *Database Unique Constraint Layer:* Enforced by `prediction_contacts_unique_value` in Supabase with automatic transaction rollback if a duplicate contact is detected.
 9. **Strict Copywriting & Street Tone (DO NOT TOUCH):**
    - The user specifically authored the current wording in a casual, punchy street/urban climbing tone (`WHO WILL WIN tonight's FINALs?`, `PLACE YOUR BETS`, `FAN FAVORITES`, `NEXT`, `YOUR first and last NAME`, etc.).
    - **MANDATE:** Do NOT alter, rewrite, or touch any text, wording, or titles. Keep all copy verbatim as the user left it.
@@ -76,7 +81,6 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
      5. Lowest Tops/Zones score difference.
      - On the confirmation ticket, the rule is clearly highlighted: *"Prize rule: Matching both champions (Women + Men) takes #1 priority. Predicted IFSC scores break ties to crown the winners!"*
    - **Admin Official Results Entry:** Box 2 has dropdowns for Men & Women champions with Tops, Zones, and Attempts inputs + live preview badges + `⚡ CALCULATE POINTS & PICK WINNERS →` button.
-   - **100 Seeded Community Predictions:** Ready out of the box with realistic IFSC scores, with a one-click `🎲 SEED 100 TEST VOTERS` button in admin.
 
 11. **Unified Street Logo Identity ("BLOK" + Tilted Tape Sticker "OPEN XXL"):**
     - Consistent across all 8 views in the application (`welcome-view`, `register-view`, `pick-woman-view`, `score-woman-view`, `pick-man-view`, `score-man-view`, `success-view`, `results-view`).
@@ -147,7 +151,7 @@ The application has been transformed to match the official **BLOK OPEN XXL** eve
       - Supports country code parsing e.g. `"Lucas Van de Velde (BEL)"` -> extracts `BEL` code & flag; fallback to `FINALIST / BLOK / 🧗` for unlisted athletes.
       - Individual row clear buttons (`✕`).
       - Quick batch paste: Collapsible helper allowing the organizer to paste a 6-line list of names directly from WhatsApp/notes into either category.
-      - `🎲 DEMO` button for rapid testing and `↺ CLEAR ALL` for quick reset.
+      - `↺ CLEAR ALL` for quick reset.
       - Live slot counter badges (`X / 6 READY` / `X / 6 (Y EMPTY)`).
     - **Validation & Publishing:**
       - `⚡ PUBLISH & LOCK 12 FINALISTS` validates that all 12 slots are populated.

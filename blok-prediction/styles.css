@@ -336,6 +336,23 @@ button, input { font: inherit; }
 }
 .prediction-form input:disabled { opacity: .4; cursor: not-allowed; }
 
+.field-hint {
+  font: 600 11.5px/1.4 var(--font-mono);
+  color: var(--chalk-dim);
+  margin: 6px 0 0;
+  display: block;
+  letter-spacing: .02em;
+  transition: color .2s ease, opacity .2s ease;
+}
+.field-hint.is-matched {
+  color: #4ade80;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.field-hint.is-warn {
+  color: #facc15;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
 .privacy-note {
   font: 500 11.5px/1.45 var(--font-body); color: var(--chalk-dim); margin: 8px 0 0;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
@@ -2498,23 +2515,6 @@ button, input { font: inherit; }
   transform: scale(0.99);
 }
 
-.admin-seed-btn {
-  width: 100%;
-  min-height: 36px;
-  margin-top: 8px;
-  border: 1.5px dashed var(--line-solid);
-  background: rgba(251, 249, 250, 0.05);
-  color: var(--chalk);
-  font: 700 11px var(--font-mono);
-  letter-spacing: .06em;
-  cursor: pointer;
-  transition: all .12s ease;
-}
-.admin-seed-btn:hover {
-  background: var(--mauve);
-  color: var(--chalk-dark);
-  border-color: var(--mauve);
-}
 
 /* ================= CONTEST LEADERBOARD — AUTHENTIC BOULDERING & NEON WINNERS ================= */
 

@@ -78,18 +78,19 @@
         </header>
 
         <div class="view-content">
-          <p class="micro-label">STEP 0 · YOUR NAME</p>
-          <h2 id="registerTitle">YOUR <span>NAME</span></h2>
+          <p class="micro-label">STEP 0 · YOUR DETAILS</p>
+          <h2 id="registerTitle">YOUR <span>DETAILS</span></h2>
           <form id="detailsForm" class="prediction-form">
             <div class="form-group">
               <label for="participantName">YOUR first and last NAME</label>
-              <input id="participantName" name="name" autocomplete="name" placeholder="Enter your name" maxlength="80" required />
+              <input id="participantName" name="name" autocomplete="name" placeholder="Enter your full name" maxlength="80" required />
             </div>
 
-            <!-- Email & Phone hidden for test mode with name only -->
-            <div style="display: none;" aria-hidden="true">
-              <input id="participantEmail" name="email" type="email" />
-              <input id="participantPhone" name="phone" type="tel" />
+            <div class="form-group">
+              <label for="participantPhone">YOUR MOBILE PHONE</label>
+              <input id="participantPhone" name="phone" type="tel" autocomplete="tel" placeholder="+32 4xx xx xx xx (or 04xx)" maxlength="30" required />
+              <small id="phoneHint" class="field-hint">
+              </small>
             </div>
 
             <div id="detailsMessage" class="form-message" role="status" aria-live="polite"></div>
@@ -411,6 +412,10 @@
               <span class="receipt-label">PARTICIPANT</span>
               <b class="receipt-value" id="successName">Participant</b>
             </div>
+            <div class="receipt-row" id="successPhoneRow" hidden>
+              <span class="receipt-label">PHONE</span>
+              <b class="receipt-value" id="successPhone">—</b>
+            </div>
             <div class="receipt-row receipt-row-women">
               <span class="receipt-label">WOMEN'S PICK</span>
               <b class="receipt-value receipt-val-women highlight-accent" id="successWomenPick">—</b>
@@ -535,7 +540,6 @@
             <h3>SET 12 FINALISTS</h3>
           </div>
           <div class="roster-head-actions">
-            <button type="button" id="loadDemoFinalistsBtn" class="btn-roster-reset" title="Fill with demo names for testing">🎲 DEMO</button>
             <button type="button" id="resetRosterBtn" class="btn-roster-reset" title="Clear all slots">↺ CLEAR ALL</button>
             <span id="rosterStatusBadge" class="status-badge pending">0 / 12</span>
           </div>
@@ -733,7 +737,6 @@
           <span class="admin-row-tag">SUBMISSIONS FEED</span>
         </div>
         <div id="adminEntries" class="admin-entries"></div>
-        <button type="button" id="seedTestBtn" class="admin-seed-btn">🎲 SEED 100 TEST VOTERS</button>
       </section>
 
       <!-- Section 4: Clear Participant Data (Safeguarded & Collapsed at Bottom) -->
@@ -796,6 +799,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="qrcode.min.js"></script>
-  <script src="app.js?v=6.9"></script>
+  <script src="app.js?v=7.4"></script>
 </body>
 </html>

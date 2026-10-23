@@ -10,7 +10,7 @@ A sleek, mobile-first web app for attendees at **Klimzaal Blok** (Hoboken, Antwe
 - **Dual Category IFSC Prediction Flow:** Sequential wizard (Women's Finalist → Women's IFSC Scorecard → Men's Finalist → Men's IFSC Scorecard).
 - **Live Crowd Odds:** Real-time breakdown of attendee predictions per climber with percentage bars.
 - **Dual IFSC Scoring Engine:** Instant point calculation (+50 winner, +20 tops closeness, +15 zones closeness, +15 top att closeness, +10 zone att closeness, +25 full exact bonus, max 270 pts) with comprehensive tiebreakers.
-- **Organizer Console:** Fast prediction locking, official finals score entry with live previews, test voter seeding, and safe data management.
+- **Organizer Console:** Fast prediction locking, 12 finalists roster setup, official finals score entry with live previews, and safe data management.
 - **Dual Mode (Local & Supabase):** Works out-of-the-box locally in `localStorage`, and connects seamlessly to Supabase for real-time mobile sync.
 
 ---

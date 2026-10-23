@@ -6,7 +6,6 @@ const database = remoteEnabled ? window.supabase.createClient(config.url, config
 // DOM Elements
 const detailsForm = document.querySelector('#detailsForm');
 const participantNameInput = document.querySelector('#participantName');
-const participantEmailInput = document.querySelector('#participantEmail');
 const participantPhoneInput = document.querySelector('#participantPhone');
 const detailsMessage = document.querySelector('#detailsMessage');
 
@@ -26,7 +25,6 @@ const adminControls = document.querySelector('#adminControls');
 const adminWarning = document.querySelector('#adminWarning');
 const adminAuthMessage = document.querySelector('#adminAuthMessage');
 const appFrame = document.querySelector('#appFrame');
-const seedTestBtn = document.querySelector('#seedTestBtn');
 
 function normalize(value) {
   const clean = String(value || '').trim().replace(/\s*\([A-Za-z]{3}\)$/, '').trim();
@@ -546,6 +544,235 @@ function rankParticipants(entries, officialWinner) {
 }
 
 
+// ================= INTERNATIONAL PHONE HELPERS =================
+function normalizePhoneNumber(rawPhone) {
+  if (!rawPhone) return '';
+  let str = String(rawPhone).trim();
+
+  // Strip European national trunk zero notation e.g. +33(0)6... or +44(0)7...
+  str = str.replace(/\(0\)/g, '');
+
+  // Strip all spaces, hyphens, dots, parentheses, and slashes
+  str = str.replace(/[\s\.\-\(\)\/]/g, '');
+
+  // Convert leading 00 to + (e.g. 0032 -> +32, 0033 -> +33)
+  if (str.startsWith('00')) {
+    str = '+' + str.slice(2);
+  }
+
+  // Belgian local mobile format e.g. 0470123456 -> +32470123456
+  // Belgian mobile numbers start with 045, 046, 047, 048, 049 (10 digits total)
+  if (/^04[5-9]\d{7}$/.test(str)) {
+    str = '+32' + str.slice(1);
+  }
+  // Auto-correct common Belgian typo where 0 trunk was kept: +320470123456 -> +32470123456
+  else if (/^\+320(4[5-9]\d{7})$/.test(str)) {
+    str = '+32' + str.slice(4);
+  }
+  // Dutch local mobile format: 0612345678 (10 digits) -> +31612345678
+  else if (/^06\d{8}$/.test(str)) {
+    str = '+31' + str.slice(1);
+  }
+  // French local mobile format: 06... or 07... (10 digits) -> +33...
+  else if (/^0[67]\d{8}$/.test(str)) {
+    str = '+33' + str.slice(1);
+  }
+  // German local mobile format: 015..., 016..., 017... -> +49...
+  else if (/^01[5-7]\d{7,10}$/.test(str)) {
+    str = '+49' + str.slice(1);
+  }
+  // UK local mobile format: 07... (11 digits) -> +44...
+  else if (/^07\d{9}$/.test(str)) {
+    str = '+44' + str.slice(1);
+  }
+
+  return str;
+}
+
+function validatePhoneNumber(rawPhone) {
+  if (!rawPhone || !String(rawPhone).trim()) {
+    return { valid: false, error: 'Please enter your mobile phone number.' };
+  }
+
+  const normalized = normalizePhoneNumber(rawPhone);
+
+  // Must only contain digits and leading +
+  if (!/^\+?\d+$/.test(normalized)) {
+    return { valid: false, error: 'Phone number may only contain digits and a country code.' };
+  }
+
+  // Must start with +
+  if (!normalized.startsWith('+')) {
+    return {
+      valid: false,
+      error: 'Please include your country code (e.g. +32 for Belgium, +31 for Netherlands, +33 for France, etc.).'
+    };
+  }
+
+  const digits = normalized.slice(1);
+
+  // International E.164 total digits: 8 to 15
+  if (digits.length < 8 || digits.length > 15) {
+    return { valid: false, error: 'Please enter a complete, valid mobile phone number.' };
+  }
+
+  // Check for dummy repetitive digits (e.g. 11111111, +32444444444)
+  const uniqueDigits = new Set(digits).size;
+  if (uniqueDigits <= 2 && digits.length >= 7) {
+    return { valid: false, error: 'Please enter a real, valid mobile phone number.' };
+  }
+
+  // Check for obvious numeric sequences
+  if (/^(012345|123456|234567|345678|456789|987654|876543|765432|654321|543210)/.test(digits.slice(2))) {
+    return { valid: false, error: 'Please enter a real, valid mobile phone number.' };
+  }
+
+  // 1. BELGIUM (+32)
+  if (normalized.startsWith('+32')) {
+    const after = normalized.slice(3);
+    if (after.startsWith('0')) {
+      return {
+        valid: false,
+        error: 'Invalid Belgian number. Do not include 0 after +32 (e.g. +32 470 12 34 56).'
+      };
+    }
+    // Belgian mobile prefix is strictly 45x, 46x, 47x, 48x, 49x followed by 6 digits (total 9 digits after +32)
+    if (!/^4[5-9]\d{7}$/.test(after)) {
+      return {
+        valid: false,
+        error: 'Invalid Belgian mobile number. It must be 9 digits starting with 4 (e.g. +32 470 12 34 56 or 0470 12 34 56).'
+      };
+    }
+    return { valid: true, normalized };
+  }
+
+  // 2. NETHERLANDS (+31)
+  if (normalized.startsWith('+31')) {
+    const after = normalized.slice(3);
+    if (!/^6\d{8}$/.test(after)) {
+      return {
+        valid: false,
+        error: 'Invalid Dutch mobile number. Must be 9 digits starting with 6 (e.g. +31 6 12 34 56 78).'
+      };
+    }
+    return { valid: true, normalized };
+  }
+
+  // 3. FRANCE (+33)
+  if (normalized.startsWith('+33')) {
+    const after = normalized.slice(3);
+    if (!/^[67]\d{8}$/.test(after)) {
+      return {
+        valid: false,
+        error: 'Invalid French mobile number. Must be 9 digits starting with 6 or 7 (e.g. +33 6 12 34 56 78).'
+      };
+    }
+    return { valid: true, normalized };
+  }
+
+  // 4. GERMANY (+49)
+  if (normalized.startsWith('+49')) {
+    const after = normalized.slice(3);
+    if (!/^1[5-7]\d{7,10}$/.test(after)) {
+      return {
+        valid: false,
+        error: 'Invalid German mobile number. Must start with 15/16/17 (e.g. +49 151 12345678).'
+      };
+    }
+    return { valid: true, normalized };
+  }
+
+  // 5. UNITED KINGDOM (+44)
+  if (normalized.startsWith('+44')) {
+    const after = normalized.slice(3);
+    if (!/^7\d{9}$/.test(after)) {
+      return {
+        valid: false,
+        error: 'Invalid UK mobile number. Must be 10 digits starting with 7 (e.g. +44 7123 456789).'
+      };
+    }
+    return { valid: true, normalized };
+  }
+
+  // 6. SPAIN (+34)
+  if (normalized.startsWith('+34')) {
+    const after = normalized.slice(3);
+    if (!/^[67]\d{8}$/.test(after)) {
+      return {
+        valid: false,
+        error: 'Invalid Spanish mobile number. Must be 9 digits starting with 6 or 7 (e.g. +34 612 345 678).'
+      };
+    }
+    return { valid: true, normalized };
+  }
+
+  // 7. ITALY (+39)
+  if (normalized.startsWith('+39')) {
+    const after = normalized.slice(3);
+    if (!/^3\d{8,9}$/.test(after)) {
+      return {
+        valid: false,
+        error: 'Invalid Italian mobile number. Must start with 3 (e.g. +39 312 345 6789).'
+      };
+    }
+    return { valid: true, normalized };
+  }
+
+  // 8. OTHER INTERNATIONAL NUMBERS (ITU-T E.164)
+  if (!/^\+(?:[1-9]\d{0,2})\d{6,12}$/.test(normalized)) {
+    return { valid: false, error: 'Please enter a valid international mobile number with country code.' };
+  }
+
+  return { valid: true, normalized };
+}
+
+function isValidPhoneNumber(rawPhone) {
+  return validatePhoneNumber(rawPhone).valid;
+}
+
+function arePhoneNumbersEqual(phoneA, phoneB) {
+  const checkA = validatePhoneNumber(phoneA);
+  const checkB = validatePhoneNumber(phoneB);
+  const a = checkA.normalized || normalizePhoneNumber(phoneA);
+  const b = checkB.normalized || normalizePhoneNumber(phoneB);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const digitsA = a.replace(/^\+/, '');
+  const digitsB = b.replace(/^\+/, '');
+  if (digitsA === digitsB) return true;
+  return false;
+}
+
+// ================= SAVED TICKET HELPERS =================
+function getSavedTicket() {
+  try {
+    const raw = localStorage.getItem('blok_voted_ticket');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderSavedTicket() {
+  const ticket = getSavedTicket();
+  if (!ticket) return;
+
+  const successName = document.querySelector('#successName');
+  const successPhone = document.querySelector('#successPhone');
+  const successPhoneRow = document.querySelector('#successPhoneRow');
+  const successWomenPick = document.querySelector('#successWomenPick');
+  const successMenPick = document.querySelector('#successMenPick');
+
+  if (successName && ticket.name) successName.textContent = ticket.name;
+  if (successPhone && ticket.phone) {
+    successPhone.textContent = ticket.phone;
+    if (successPhoneRow) successPhoneRow.hidden = false;
+  }
+  if (successWomenPick && ticket.womenPick) successWomenPick.textContent = ticket.womenPick;
+  if (successMenPick && ticket.menPick) successMenPick.textContent = ticket.menPick;
+}
+
 // ================= UI HELPERS =================
 function showDetailsMessage(message, error = false) {
   if (!detailsMessage) return;
@@ -562,8 +789,12 @@ function setSubmitting(button, submitting) {
 
 function showView(viewName, pushHistory = true) {
   if (viewName === 'home') viewName = 'welcome';
-  if ((viewName === 'pick-woman' || viewName === 'score-woman' || viewName === 'pick-man' || viewName === 'score-man') && (!pendingParticipant || !pendingParticipant.name)) {
+  if ((viewName === 'pick-woman' || viewName === 'score-woman' || viewName === 'pick-man' || viewName === 'score-man') && (!pendingParticipant || !pendingParticipant.name || !pendingParticipant.phone)) {
     viewName = 'register';
+  }
+
+  if (viewName === 'success') {
+    renderSavedTicket();
   }
 
   if (viewName === 'pick-woman' && typeof renderWomenFinalistPool === 'function') renderWomenFinalistPool();
@@ -1080,7 +1311,6 @@ function render() {
   }
 
   if (participantNameInput) participantNameInput.disabled = !state.predictionsOpen;
-  if (participantEmailInput) participantEmailInput.disabled = !state.predictionsOpen;
   if (participantPhoneInput) participantPhoneInput.disabled = !state.predictionsOpen;
   if (detailsForm) {
     const subBtn = detailsForm.querySelector('[type="submit"]');
@@ -1261,22 +1491,56 @@ async function refresh() {
   render();
 }
 
-// ================= STEP 0: PARTICIPANT NAME SUBMISSION =================
+// ================= STEP 0: PARTICIPANT NAME & INTERNATIONAL PHONE SUBMISSION =================
 if (detailsForm) {
-  detailsForm.addEventListener('submit', (event) => {
+  detailsForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+
     const name = participantNameInput.value.trim();
+    const rawPhone = participantPhoneInput ? participantPhoneInput.value.trim() : '';
 
     if (!name || name.length < 2) {
       participantNameInput.focus();
-      return showDetailsMessage('Please enter your name.', true);
+      return showDetailsMessage('Please enter your full name.', true);
     }
+
+    const phoneValidation = validatePhoneNumber(rawPhone);
+    if (!phoneValidation.valid) {
+      if (participantPhoneInput) participantPhoneInput.focus();
+      return showDetailsMessage(phoneValidation.error, true);
+    }
+    const phone = phoneValidation.normalized;
 
     if (!state.predictionsOpen) {
       return showDetailsMessage('Predictions are now closed for the finals.', true);
     }
 
-    pendingParticipant = { name, email: '', phone: '' };
+    // 2. State entries check: has this phone already submitted in the loaded state?
+    const isDuplicate = state.entries.some((entry) => arePhoneNumbersEqual(entry.contactValue, phone));
+    if (isDuplicate) {
+      if (participantPhoneInput) participantPhoneInput.focus();
+      return showDetailsMessage('This phone number has already submitted a prediction.', true);
+    }
+
+    // 3. Remote Supabase check: check if phone is already registered in prediction_contacts
+    if (remoteEnabled) {
+      try {
+        const check = await database
+          .from('prediction_contacts')
+          .select('prediction_id, contact_value')
+          .eq('contact_value', phone)
+          .maybeSingle();
+
+        if (check && check.data && check.data.prediction_id) {
+          if (participantPhoneInput) participantPhoneInput.focus();
+          return showDetailsMessage('This phone number has already submitted a prediction.', true);
+        }
+      } catch (err) {
+        console.warn('Could not query remote prediction_contacts:', err);
+      }
+    }
+
+    pendingParticipant = { name, phone };
     document.querySelectorAll('.voting-as-val').forEach((el) => { el.textContent = name; });
     showDetailsMessage('');
 
@@ -1290,12 +1554,55 @@ if (detailsForm) {
     renderWomenFinalistPool();
     showView('pick-woman');
   });
+
+  // Real-time phone hint helper
+  if (participantPhoneInput) {
+    participantPhoneInput.addEventListener('input', () => {
+      const hint = document.querySelector('#phoneHint');
+      if (!hint) return;
+      const val = participantPhoneInput.value.trim();
+      if (!val) {
+        hint.textContent = 'Belgian mobile (+32 4xx / 04xx) or international (+31, +33, +49, etc.)';
+        hint.className = 'field-hint';
+        return;
+      }
+      const clean = val.replace(/[\s\.\-\(\)\/]/g, '');
+      if (clean.startsWith('04') || clean.startsWith('+324') || clean.startsWith('00324')) {
+        hint.textContent = '🇧🇪 Belgian mobile detected';
+        hint.className = 'field-hint is-matched';
+      } else if (clean.startsWith('06') || clean.startsWith('+316') || clean.startsWith('00316')) {
+        hint.textContent = '🇳🇱 Dutch mobile detected';
+        hint.className = 'field-hint is-matched';
+      } else if (clean.startsWith('06') || clean.startsWith('07') || clean.startsWith('+336') || clean.startsWith('+337') || clean.startsWith('00336')) {
+        hint.textContent = '🇫🇷 French mobile detected';
+        hint.className = 'field-hint is-matched';
+      } else if (clean.startsWith('+49') || clean.startsWith('0049') || clean.startsWith('015') || clean.startsWith('016') || clean.startsWith('017')) {
+        hint.textContent = '🇩🇪 German mobile detected';
+        hint.className = 'field-hint is-matched';
+      } else if (clean.startsWith('+44') || clean.startsWith('0044') || clean.startsWith('07')) {
+        hint.textContent = '🇬🇧 UK mobile detected';
+        hint.className = 'field-hint is-matched';
+      } else if (clean.startsWith('+34') || clean.startsWith('0034')) {
+        hint.textContent = '🇪🇸 Spanish mobile detected';
+        hint.className = 'field-hint is-matched';
+      } else if (clean.startsWith('+39') || clean.startsWith('0039')) {
+        hint.textContent = '🇮🇹 Italian mobile detected';
+        hint.className = 'field-hint is-matched';
+      } else if (clean.startsWith('+')) {
+        hint.textContent = '🌍 International mobile with country code';
+        hint.className = 'field-hint is-matched';
+      } else {
+        hint.textContent = '💡 Please include your country code (e.g. +32, +31, +33, +49)';
+        hint.className = 'field-hint is-warn';
+      }
+    });
+  }
 }
 
 // ================= STEP 4: CONFIRM AND SUBMIT ALL PREDICTIONS =================
 if (confirmPredictionBtn) {
   confirmPredictionBtn.addEventListener('click', async () => {
-    if (!pendingParticipant || !pendingParticipant.name) {
+    if (!pendingParticipant || !pendingParticipant.name || !pendingParticipant.phone) {
       showView('register');
       return;
     }
@@ -1311,92 +1618,86 @@ if (confirmPredictionBtn) {
     setSubmitting(confirmPredictionBtn, true);
 
     const name = pendingParticipant.name;
+    const phone = pendingParticipant.phone;
     const finalWomen = sanitizeIfsc(draftPick.women);
     const finalMen = sanitizeIfsc(draftPick.men);
     const compactPayload = encodePrediction(finalWomen, finalMen);
 
     try {
       if (remoteEnabled) {
-        let submitName = name;
-        let response = await database.from('predictions').insert({
-          participant_name: submitName,
+        // 1. Insert prediction record
+        const predResponse = await database.from('predictions').insert({
+          participant_name: name,
           climber_name: compactPayload
         }).select('id').single();
 
-        // Handle duplicate name collision (e.g. repeated testing with same participant name)
-        if (response.error && (response.error.code === '23505' || String(response.error.message).includes('unique'))) {
-          submitName = `${name} #${Math.floor(100 + Math.random() * 900)}`;
-          response = await database.from('predictions').insert({
-            participant_name: submitName,
-            climber_name: compactPayload
-          }).select('id').single();
+        if (predResponse.error) throw predResponse.error;
+        const predId = predResponse.data.id;
+
+        // 2. Insert contact record with phone (protected by unique index in database)
+        if (phone) {
+          const contactResponse = await database.from('prediction_contacts').insert({
+            prediction_id: predId,
+            contact_type: 'phone',
+            contact_value: phone
+          });
+
+          if (contactResponse.error) {
+            // Duplicate phone caught by database unique index!
+            if (contactResponse.error.code === '23505' || String(contactResponse.error.message).includes('unique')) {
+              await database.from('predictions').delete().eq('id', predId);
+              showDetailsMessage('This phone number has already submitted a prediction.', true);
+              showView('register');
+              return;
+            }
+            console.warn('Could not save contact record:', contactResponse.error);
+          }
         }
 
-        if (response.error) {
-          console.warn('Remote database warning, saving to local device:', response.error);
-          state.entries.push({
-            id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-            name: submitName,
-            climber: compactPayload,
-            contactType: 'name',
-            contactValue: submitName,
-            createdAt: new Date().toISOString()
-          });
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-          render();
-        } else {
-          await refresh();
-        }
+        const ticket = {
+          name,
+          phone,
+          womenPick: `${finalWomen.climber} (${finalWomen.scoreStr})`,
+          menPick: `${finalMen.climber} (${finalMen.scoreStr})`,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('blok_voted_phone', phone);
+        localStorage.setItem('blok_voted_name', name);
+        localStorage.setItem('blok_voted_ticket', JSON.stringify(ticket));
+        await refresh();
       } else {
+        // Local mode
         state.entries.push({
           id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
           name,
           climber: compactPayload,
-          contactType: 'name',
-          contactValue: name,
+          contactType: 'phone',
+          contactValue: phone,
           createdAt: new Date().toISOString()
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const ticket = {
+          name,
+          phone,
+          womenPick: `${finalWomen.climber} (${finalWomen.scoreStr})`,
+          menPick: `${finalMen.climber} (${finalMen.scoreStr})`,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('blok_voted_phone', phone);
+        localStorage.setItem('blok_voted_name', name);
+        localStorage.setItem('blok_voted_ticket', JSON.stringify(ticket));
         render();
       }
 
-      // Populate Success Screen (Women First, then Men)
-      const successName = document.querySelector('#successName');
-      const successWomenPick = document.querySelector('#successWomenPick');
-      const successMenPick = document.querySelector('#successMenPick');
-
-      if (successName) successName.textContent = name;
-      if (successWomenPick) successWomenPick.textContent = `${finalWomen.climber} (${finalWomen.scoreStr})`;
-      if (successMenPick) successMenPick.textContent = `${finalMen.climber} (${finalMen.scoreStr})`;
+      renderSavedTicket();
 
       if (detailsForm) detailsForm.reset();
       pendingParticipant = null;
       showView('success');
     } catch (error) {
-      console.error('Submission fallback:', error);
-      // Fallback save to ensure the user never gets an error popup
-      state.entries.push({
-        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-        name,
-        climber: compactPayload,
-        contactType: 'name',
-        contactValue: name,
-        createdAt: new Date().toISOString()
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      render();
-
-      const successName = document.querySelector('#successName');
-      const successWomenPick = document.querySelector('#successWomenPick');
-      const successMenPick = document.querySelector('#successMenPick');
-
-      if (successName) successName.textContent = name;
-      if (successWomenPick) successWomenPick.textContent = `${finalWomen.climber} (${finalWomen.scoreStr})`;
-      if (successMenPick) successMenPick.textContent = `${finalMen.climber} (${finalMen.scoreStr})`;
-
-      if (detailsForm) detailsForm.reset();
-      pendingParticipant = null;
-      showView('success');
+      console.error('Submission error:', error);
+      showDetailsMessage(error.message || 'Could not save prediction. Please try again.', true);
+      showView('register');
     } finally {
       setSubmitting(confirmPredictionBtn, false);
     }
@@ -1681,24 +1982,6 @@ if (resetRosterBtn) {
     if (rosterMessage) {
       rosterMessage.textContent = 'All finalist slots cleared. Enter the 6 women and 6 men by hand.';
       rosterMessage.style.color = 'var(--chalk-dim)';
-    }
-    updateRosterBadges();
-  });
-}
-
-// Load Demo Names Button (for easy testing)
-const loadDemoFinalistsBtn = document.querySelector('#loadDemoFinalistsBtn');
-if (loadDemoFinalistsBtn) {
-  loadDemoFinalistsBtn.addEventListener('click', () => {
-    const wInputs = document.querySelectorAll('.roster-input[data-roster-gender="women"]');
-    const mInputs = document.querySelectorAll('.roster-input[data-roster-gender="men"]');
-    DEFAULT_FINALIST_NAMES.women.forEach((name, i) => { if (wInputs[i]) wInputs[i].value = name; });
-    DEFAULT_FINALIST_NAMES.men.forEach((name, i) => { if (mInputs[i]) mInputs[i].value = name; });
-    document.querySelectorAll('.roster-slot-row').forEach((r) => r.classList.remove('is-empty-warning'));
-    const rosterMessage = document.querySelector('#adminRosterMessage');
-    if (rosterMessage) {
-      rosterMessage.textContent = 'Loaded demo qualification finalists into slots.';
-      rosterMessage.style.color = 'var(--tape-yellow-soft)';
     }
     updateRosterBadges();
   });
@@ -2003,111 +2286,6 @@ document.querySelector('#toggleOpen').addEventListener('click', async (event) =>
   }
 });
 
-// ================= SEED 100 REALISTIC COMMUNITY TEST VOTERS =================
-function generate100CommunityPredictions() {
-  const FIRST_NAMES = [
-    'Emma', 'Lucas', 'Sarah', 'Thomas', 'Mila', 'Liam', 'Olivia', 'Noah', 'Elena', 'Arthur',
-    'Chloe', 'Louis', 'Alice', 'Jules', 'Louise', 'Adam', 'Lina', 'Victor', 'Ines', 'Gabriel',
-    'Amelie', 'Matteo', 'Juliette', 'Florian', 'Charlotte', 'Arno', 'Zoe', 'Wout', 'Manon', 'Kobe',
-    'Fien', 'Jasper', 'Noor', 'Milan', 'Lore', 'Daan', 'Ella', 'Lars', 'Hanne', 'Senne',
-    'Eline', 'Niels', 'Fleur', 'Jonas', 'Amber', 'Ruben', 'Anouk', 'Bram', 'Clara', 'Thijs',
-    'Yuki', 'Robin', 'Anna', 'Jens', 'Maya', 'Sam', 'Sophia', 'Sander', 'Eva', 'Simon',
-    'Nora', 'Vincent', 'Laura', 'Cedric', 'Sara', 'Gilles', 'Julia', 'Nathan', 'Marie', 'Antoine',
-    'Elise', 'Julien', 'Camille', 'Alexandre', 'Lea', 'Sebastien', 'Lotte', 'Nicolas', 'Luka', 'Pierre',
-    'Timo', 'Kenji', 'Felix', 'Leo', 'Oscar', 'Theo', 'Hugo', 'Paul', 'Leon', 'Axel',
-    'David', 'Martin', 'Luka', 'Marko', 'Stefan', 'Jan', 'Matej', 'Sven', 'Mia', 'Victoria'
-  ];
-
-  const LAST_NAMES = [
-    'Peeters', 'Janssens', 'Maes', 'Jacobs', 'Mertens', 'Willems', 'Claes', 'Goossens', 'Wouters', 'De Smet',
-    'Vermeulen', 'Pauwels', 'Hermans', 'Aerts', 'Michiels', 'Martens', 'Desmet', 'De Vos', 'Dubois', 'Lambert',
-    'Dupont', 'Martin', 'Dumont', 'Leclercq', 'Laurent', 'Renard', 'Simon', 'Vandenberghe', 'Van Damme', 'De Clercq'
-  ];
-
-  const womenCandidates = FINALISTS.women.map((w) => w.name);
-  const menCandidates = FINALISTS.men.map((m) => m.name);
-
-  const seeded = [];
-
-  for (let i = 0; i < 100; i++) {
-    const fName = FIRST_NAMES[i % FIRST_NAMES.length];
-    const lName = LAST_NAMES[(i * 3 + 7) % LAST_NAMES.length];
-    const fullName = `${fName} ${lName}`;
-
-    // Pick distribution across the 6 finalists
-    const womenIdx = (i % 2 === 0) ? 0 : (i % womenCandidates.length);
-    const menIdx = (i % 3 === 0) ? 0 : (i % 2 === 0 ? 1 : (i % menCandidates.length));
-
-    // Realistic IFSC scores
-    const womenTops = [3, 3, 4, 4, 4, 2][i % 6];
-    const womenZones = Math.max(womenTops, [4, 4, 4, 4, 3, 3][(i + 2) % 6]);
-    const womenAttTop = womenTops === 0 ? 0 : womenTops + ((i + 1) % 3);
-    const womenAttZone = womenZones === 0 ? 0 : womenZones + (i % 2);
-
-    const menTops = [2, 3, 3, 3, 4, 4][(i + 1) % 6];
-    const menZones = Math.max(menTops, [3, 4, 4, 4, 4, 3][i % 6]);
-    const menAttTop = menTops === 0 ? 0 : menTops + (i % 4);
-    const menAttZone = menZones === 0 ? 0 : menZones + (i % 3);
-
-    const payload = {
-      women: sanitizeIfsc({
-        climber: womenCandidates[womenIdx],
-        tops: womenTops,
-        zones: womenZones,
-        att_top: womenAttTop,
-        att_zone: womenAttZone
-      }),
-      men: sanitizeIfsc({
-        climber: menCandidates[menIdx],
-        tops: menTops,
-        zones: menZones,
-        att_top: menAttTop,
-        att_zone: menAttZone
-      })
-    };
-
-    seeded.push({
-      id: `seed-${i + 1}`,
-      name: fullName,
-      climber: encodePrediction(payload.women, payload.men),
-      contactType: 'name',
-      contactValue: fullName,
-      createdAt: new Date(Date.now() - (100 - i) * 60000).toISOString()
-    });
-  }
-
-  return seeded;
-}
-
-if (seedTestBtn) {
-  seedTestBtn.addEventListener('click', async () => {
-    setSubmitting(seedTestBtn, true);
-    try {
-      const seeded = generate100CommunityPredictions();
-      if (remoteEnabled) {
-        await database.from('predictions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-        const rows = seeded.map((s) => ({
-          participant_name: s.name,
-          climber_name: s.climber
-        }));
-        await database.from('predictions').insert(rows);
-        await refresh();
-      } else {
-        state.entries = seeded;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        render();
-      }
-      window.alert('✅ 100 realistic community predictions seeded (Women first, then Men)!');
-    } catch (err) {
-      console.error(err);
-      window.alert('Error seeding test voters.');
-    } finally {
-      setSubmitting(seedTestBtn, false);
-    }
-  });
-}
-
-
 // ================= ADMIN: DELETE PARTICIPANTS ONLY =================
 const clearDataBtn = document.querySelector('#clearData');
 if (clearDataBtn) {
@@ -2368,7 +2546,7 @@ if (adminLoginForm) {
 document.querySelectorAll('[data-view-target]').forEach((button) => {
   button.addEventListener('click', () => {
     const target = button.dataset.viewTarget;
-    if ((target === 'pick-woman' || target === 'score-woman' || target === 'pick-man' || target === 'score-man') && (!pendingParticipant || !pendingParticipant.name)) {
+    if ((target === 'pick-woman' || target === 'score-woman' || target === 'pick-man' || target === 'score-man') && (!pendingParticipant || !pendingParticipant.name || !pendingParticipant.phone)) {
       showView('register');
       return;
     }
