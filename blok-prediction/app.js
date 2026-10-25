@@ -395,10 +395,51 @@ function parsePrediction(rawClimber) {
   };
 }
 
-// Parses official winner (delegates to parsePrediction)
+// Helpers to store finalists safely in official_winner column if active_finalists column is missing in Supabase
+function encodeFinalistsInWinnerColumn(finalistsPayload, currentWinnerVal = '') {
+  const finalistsJson = JSON.stringify(finalistsPayload);
+  let cleanWinner = '';
+  if (currentWinnerVal) {
+    if (currentWinnerVal.includes('###WINNER:')) {
+      cleanWinner = currentWinnerVal.split('###WINNER:')[1] || '';
+    } else if (!currentWinnerVal.startsWith('FINALISTS:')) {
+      cleanWinner = currentWinnerVal;
+    }
+  }
+  return cleanWinner ? `FINALISTS:${finalistsJson}###WINNER:${cleanWinner}` : `FINALISTS:${finalistsJson}`;
+}
+
+function decodeFinalistsFromWinnerColumn(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  if (!raw.includes('FINALISTS:')) return null;
+  try {
+    const afterTag = raw.replace(/^.*?FINALISTS:/, '');
+    const jsonStr = afterTag.includes('###WINNER:') ? afterTag.split('###WINNER:')[0] : afterTag;
+    const parsed = JSON.parse(jsonStr);
+    let winner = null;
+    if (raw.includes('###WINNER:')) {
+      winner = raw.split('###WINNER:')[1] || null;
+    }
+    if (Array.isArray(parsed?.women) && Array.isArray(parsed?.men) && parsed.women.length === 6 && parsed.men.length === 6) {
+      return { finalists: parsed, winner };
+    }
+  } catch (e) {
+    console.warn('Could not decode finalists from winner column', e);
+  }
+  return null;
+}
+
+// Parses official winner (handles clean strings and embedded FINALISTS payloads)
 function parseOfficialWinner(raw) {
   if (!raw) return null;
-  return parsePrediction(raw);
+  let str = String(raw).trim();
+  if (str.includes('###WINNER:')) {
+    str = (str.split('###WINNER:')[1] || '').trim();
+  } else if (str.startsWith('FINALISTS:')) {
+    return null; // Contains only active finalists, official winner not declared yet!
+  }
+  if (!str) return null;
+  return parsePrediction(str);
 }
 
 // ================= SCORING & TIEBREAKER ALGORITHM =================
@@ -1445,24 +1486,42 @@ async function loadRemoteState() {
   }
 
   const contactsByPrediction = new Map(((contactsResponse && !contactsResponse.error) ? contactsResponse.data || [] : []).map((item) => [item.prediction_id, item]));
-  const remoteWinner = settingsResponse.data?.official_winner || '';
-  const parsedRemote = parseOfficialWinner(remoteWinner);
-  const isValidRemoteWinner = Boolean(parsedRemote && (parsedRemote.women?.climber || parsedRemote.men?.climber));
+  let remoteWinnerRaw = settingsResponse.data?.official_winner || '';
+  let remoteFinalistsParsed = null;
 
-  // Remote active finalists sync
+  // 1. Check dedicated active_finalists column if present in table
   if (settingsResponse.data?.active_finalists) {
     try {
       const parsedFinalists = typeof settingsResponse.data.active_finalists === 'string'
         ? JSON.parse(settingsResponse.data.active_finalists)
         : settingsResponse.data.active_finalists;
       if (Array.isArray(parsedFinalists?.women) && Array.isArray(parsedFinalists?.men) && parsedFinalists.women.length === 6 && parsedFinalists.men.length === 6) {
-        FINALISTS = buildFinalistsObject(parsedFinalists.women, parsedFinalists.men);
-        localStorage.setItem('blok_active_finalists', JSON.stringify({ women: parsedFinalists.women, men: parsedFinalists.men }));
+        remoteFinalistsParsed = parsedFinalists;
       }
     } catch (e) {
       console.warn('Could not parse remote active_finalists', e);
     }
   }
+
+  // 2. Check fallback inside official_winner column (FINALISTS:<json>)
+  if (remoteWinnerRaw && remoteWinnerRaw.includes('FINALISTS:')) {
+    const extracted = decodeFinalistsFromWinnerColumn(remoteWinnerRaw);
+    if (extracted) {
+      if (!remoteFinalistsParsed) {
+        remoteFinalistsParsed = extracted.finalists;
+      }
+      remoteWinnerRaw = extracted.winner || '';
+    }
+  }
+
+  // Apply parsed finalists if found
+  if (remoteFinalistsParsed) {
+    FINALISTS = buildFinalistsObject(remoteFinalistsParsed.women, remoteFinalistsParsed.men);
+    localStorage.setItem('blok_active_finalists', JSON.stringify({ women: remoteFinalistsParsed.women, men: remoteFinalistsParsed.men }));
+  }
+
+  const parsedRemote = parseOfficialWinner(remoteWinnerRaw);
+  const isValidRemoteWinner = Boolean(parsedRemote && (parsedRemote.women?.climber || parsedRemote.men?.climber));
 
   state = {
     entries: (predictionsResponse.data || []).map((item) => ({
@@ -1473,7 +1532,7 @@ async function loadRemoteState() {
       contactValue: contactsByPrediction.get(item.id)?.contact_value || item.participant_name,
       createdAt: item.created_at
     })),
-    winner: (isValidRemoteWinner ? remoteWinner : '') || sessionStorage.getItem('blok_test_winner') || state.winner || '',
+    winner: (isValidRemoteWinner ? (parsedRemote ? encodePrediction(parsedRemote.women, parsedRemote.men) : remoteWinnerRaw) : '') || sessionStorage.getItem('blok_test_winner') || state.winner || '',
     predictionsOpen: settingsResponse.data ? (settingsResponse.data.predictions_open !== false) : state.predictionsOpen
   };
 }
@@ -1488,6 +1547,10 @@ async function refresh() {
       showDetailsMessage('Could not sync predictions. Please try again.', true);
     }
   }
+  // Re-render finalist pools on all spectator devices whenever refresh runs!
+  renderWomenFinalistPool();
+  renderMenFinalistPool();
+  renderAdminFinalistOptions();
   render();
 }
 
@@ -1938,7 +2001,8 @@ async function saveActiveFinalists(womenNames, menNames) {
 
   FINALISTS = buildFinalistsObject(womenNames, menNames);
   const payload = { women: womenNames, men: menNames };
-  localStorage.setItem('blok_active_finalists', JSON.stringify(payload));
+  const payloadJson = JSON.stringify(payload);
+  localStorage.setItem('blok_active_finalists', payloadJson);
 
   // If draft predictions selected someone who is no longer a finalist, clear them
   if (draftPick.women.climber && !FINALISTS.women.some((w) => normalize(w.name) === normalize(draftPick.women.climber))) {
@@ -1950,17 +2014,52 @@ async function saveActiveFinalists(womenNames, menNames) {
 
   // Update Remote Supabase if enabled
   if (remoteEnabled) {
+    let savedToCloud = false;
+    let cloudError = null;
+
+    // Strategy 1: Try updating the active_finalists column if it exists in Supabase
     try {
-      const { error } = await database.from('event_settings').update({
-        active_finalists: JSON.stringify(payload),
+      const resp1 = await database.from('event_settings').update({
+        active_finalists: payloadJson,
         updated_at: new Date().toISOString()
       }).eq('id', 'main');
 
-      if (error) {
-        console.warn('Could not save active_finalists to Supabase:', error);
+      if (!resp1.error) {
+        savedToCloud = true;
+      } else {
+        cloudError = resp1.error;
       }
     } catch (e) {
-      console.warn('Error syncing active_finalists to Supabase:', e);
+      cloudError = e;
+    }
+
+    // Strategy 2 (Guaranteed Fallback): If active_finalists column does not exist (PGRST204),
+    // store inside official_winner column which exists in all Supabase instances!
+    if (!savedToCloud) {
+      try {
+        const currentResp = await database.from('event_settings').select('official_winner').eq('id', 'main').maybeSingle();
+        const existingWinnerStr = currentResp?.data?.official_winner || '';
+        const combined = encodeFinalistsInWinnerColumn(payload, existingWinnerStr);
+
+        const resp2 = await database.from('event_settings').update({
+          official_winner: combined,
+          updated_at: new Date().toISOString()
+        }).eq('id', 'main');
+
+        if (!resp2.error) {
+          savedToCloud = true;
+          cloudError = null;
+        } else {
+          cloudError = resp2.error;
+        }
+      } catch (e) {
+        cloudError = e;
+      }
+    }
+
+    if (!savedToCloud) {
+      console.error('Failed to save finalists to cloud:', cloudError);
+      throw new Error(`Cloud database error: ${cloudError?.message || 'Permission denied or connection error'}. Finalists could not be published to spectators!`);
     }
   }
 
@@ -2176,13 +2275,30 @@ if (officialResultsForm) {
       const button = event.currentTarget.querySelector('button[type="submit"]');
       setSubmitting(button, true);
       try {
-        await database.from('event_settings').update({
-          official_winner: officialCompactStr,
+        // If finalists are stored in official_winner (due to missing active_finalists column),
+        // preserve the finalists while adding the official winner!
+        const currentResp = await database.from('event_settings').select('official_winner, active_finalists').eq('id', 'main').maybeSingle();
+        let winnerValToSave = officialCompactStr;
+        if (!currentResp?.data?.active_finalists) {
+          const currentFinalistsRaw = localStorage.getItem('blok_active_finalists');
+          if (currentFinalistsRaw) {
+            try {
+              const currentFinalists = JSON.parse(currentFinalistsRaw);
+              winnerValToSave = encodeFinalistsInWinnerColumn(currentFinalists, officialCompactStr);
+            } catch (e) {}
+          }
+        }
+
+        const resp = await database.from('event_settings').update({
+          official_winner: winnerValToSave,
           predictions_open: false,
           updated_at: new Date().toISOString()
         }).eq('id', 'main');
+
+        if (resp.error) throw resp.error;
       } catch (error) {
-        console.warn('Could not sync official winner to remote:', error);
+        console.error('Could not sync official winner to remote:', error);
+        window.alert('⚠️ Cloud database error: ' + (error.message || 'Could not save official winners.'));
       } finally {
         setSubmitting(button, false);
       }
@@ -2226,8 +2342,21 @@ if (officialResultsForm) {
       // 3. Update Supabase if connected
       if (remoteEnabled) {
         try {
+          // If finalists are encoded in official_winner, preserve finalists and clear only the winner!
+          const currentResp = await database.from('event_settings').select('official_winner, active_finalists').eq('id', 'main').maybeSingle();
+          let resetValToSave = null;
+          if (!currentResp?.data?.active_finalists) {
+            const currentFinalistsRaw = localStorage.getItem('blok_active_finalists');
+            if (currentFinalistsRaw) {
+              try {
+                const currentFinalists = JSON.parse(currentFinalistsRaw);
+                resetValToSave = encodeFinalistsInWinnerColumn(currentFinalists, '');
+              } catch (e) {}
+            }
+          }
+
           const { data, error } = await database.from('event_settings').update({
-            official_winner: null,
+            official_winner: resetValToSave,
             updated_at: new Date().toISOString()
           }).eq('id', 'main').select('id');
 
